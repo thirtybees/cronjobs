@@ -221,10 +221,11 @@ class CronJobs extends Module
         Configuration::updateGlobalValue(self::EXECUTION_TOKEN, $token);
 
         if (parent::install()) {
-            return $this->installDb() && $this->installTab() &&
-                $this->registerHook('actionModuleRegisterHookAfter') &&
-                $this->registerHook('actionModuleUnRegisterHookAfter') &&
-                $this->registerHook('backOfficeHeader');
+            $this->registerHook('actionModuleRegisterHookAfter');
+            $this->registerHook('actionModuleUnRegisterHookAfter');
+            $this->registerHook('backOfficeHeader');
+
+            return $this->installDb();
         }
 
         return false;
@@ -258,37 +259,11 @@ class CronJobs extends Module
     }
 
     /**
-     * @return int
-     */
-    public function installTab()
-    {
-        $languages = Language::getLanguages(true);
-        if (empty($languages)) {
-            return true;
-        }
-
-        $tab = new Tab();
-        $tab->active = 1;
-        $tab->name = [];
-        $tab->class_name = 'AdminCronJobs';
-
-        foreach ($languages as $lang) {
-            $tab->name[$lang['id_lang']] = 'Cron Jobs';
-        }
-
-        $tab->id_parent = -1;
-        $tab->module = $this->name;
-
-        return $tab->add();
-    }
-
-    /**
      * @return bool
      */
     public function uninstall()
     {
         return $this->uninstallDb() &&
-            $this->uninstallTab() &&
             parent::uninstall();
     }
 
@@ -298,22 +273,6 @@ class CronJobs extends Module
     public function uninstallDb()
     {
         return Db::getInstance()->execute('DROP TABLE IF EXISTS '._DB_PREFIX_.self::TABLE);
-    }
-
-    /**
-     * @return bool
-     */
-    public function uninstallTab()
-    {
-        $idTab = (int) Tab::getIdFromClassName('AdminCronJobs');
-
-        if ($idTab) {
-            $tab = new Tab($idTab);
-
-            return $tab->delete();
-        }
-
-        return false;
     }
 
     /**
