@@ -1,9 +1,9 @@
-# PayPal
-![PayPal](/logo.png)
+# Cron jobs
+![Cron jobs](/logo.png)
 
 ## About
 
-Let customer pay with PayPal Express Checkout or PayPal Integral Evolution.
+Cron task manager
 
 ## Contributing
 
