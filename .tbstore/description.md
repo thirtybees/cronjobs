@@ -1,0 +1,1 @@
+The CRON jobs module allows for you to run some tasks automatically in your shop. Such tasks as updating currency, indexing your search, or even creation of sitemaps. 
