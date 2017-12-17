@@ -335,7 +335,7 @@ class CronJobsForms
         return [
             'description' => $description,
             'task'        => $task,
-            'minute'        => (int) \Tools::getValue('minute', $cron['minute']),
+            'minute'      => (int) \Tools::getValue('minute', $cron['minute']),
             'hour'        => (int) \Tools::getValue('hour', $cron['hour']),
             'day'         => (int) \Tools::getValue('day', $cron['day']),
             'month'       => (int) \Tools::getValue('month', $cron['month']),
@@ -365,7 +365,7 @@ class CronJobsForms
         }
 
         foreach ($crons as $key => &$cron) {
-            if (empty($cron['id_module']) == false) {
+            if (!empty($cron['id_module'])) {
                 try {
                     $module = \Module::getInstanceById((int) $cron['id_module']);
                 } catch (\PrestaShopException $e) {

@@ -122,7 +122,7 @@ class CronJobs extends Module
     {
         $module = Module::getInstanceByName('cronjobs');
 
-        if (($module == false) || ($module->active == false)) {
+        if (!$module || !$module->active) {
             return false;
         }
 
@@ -150,7 +150,7 @@ class CronJobs extends Module
      */
     public static function addOneShotTask($task, $description, $execution = [])
     {
-        if (static::isTaskURLValid($task) == false) {
+        if (!static::isTaskURLValid($task)) {
             return false;
         }
 
@@ -266,20 +266,20 @@ class CronJobs extends Module
             return Db::getInstance()->execute(
                 '
                 CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.static::TABLE.' (
-                `id_cronjob`    INTEGER(10) NOT NULL AUTO_INCREMENT,
-                `id_module`     INTEGER(10) DEFAULT NULL,
-                `description`   TEXT DEFAULT NULL,
-                `task`          TEXT DEFAULT NULL,
-                `minute`        INTEGER DEFAULT \'-1\',
-                `hour`          INTEGER DEFAULT \'-1\',
-                `day`           INTEGER DEFAULT \'-1\',
-                `month`         INTEGER DEFAULT \'-1\',
-                `day_of_week`   INTEGER DEFAULT \'-1\',
-                `updated_at`    DATETIME DEFAULT NULL,
-                `one_shot`      BOOLEAN NOT NULL DEFAULT 0,
-                `active`        BOOLEAN DEFAULT FALSE,
-                `id_shop`       INTEGER DEFAULT \'0\',
-                `id_shop_group` INTEGER DEFAULT \'0\',
+                `id_cronjob`    INT(11)    NOT NULL AUTO_INCREMENT,
+                `id_module`     INT(11)    DEFAULT NULL,
+                `description`   TEXT       DEFAULT NULL,
+                `task`          TEXT       DEFAULT NULL,
+                `minute`        INT(11)    DEFAULT \'-1\',
+                `hour`          INT(11)    DEFAULT \'-1\',
+                `day`           INT(11)    DEFAULT \'-1\',
+                `month`         INT(11)    DEFAULT \'-1\',
+                `day_of_week`   INT(11)    DEFAULT \'-1\',
+                `updated_at`    DATETIME   DEFAULT NULL,
+                `one_shot`      TINYINT(1) NOT NULL DEFAULT 0,
+                `active`        TINYINT(1) DEFAULT FALSE,
+                `id_shop`       INT(11)    UNSIGNED DEFAULT \'0\',
+                `id_shop_group` INT(11)    UNSIGNED DEFAULT \'0\',
                 PRIMARY KEY(`id_cronjob`),
                 INDEX (`id_module`))
                 ENGINE='._MYSQL_ENGINE_.' default CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
@@ -354,7 +354,7 @@ class CronJobs extends Module
                     static::TABLE,
                     [
                         'id_module'     => $idModule,
-                        'minute'        => $frequency['minute'],
+                        'minute'        => !empty($frequency['minute']) ? $frequency['minute'] : -1,
                         'hour'          => $frequency['hour'],
                         'day'           => $frequency['day'],
                         'month'         => $frequency['month'],
@@ -442,7 +442,8 @@ class CronJobs extends Module
                     'form_infos'       => $this->warnings,
                     'form_successes'   => $this->successes,
                     'curl_info'        => $this->l('To execute your cron tasks, please insert the following line in your cron tasks manager:', 'CronJobsForms'),
-                    'cronjob_freq'     => '* * * * * curl '.(\Configuration::get('PS_SSL_ENABLED') ? '-k ' : null).'"'.$this->context->link->getModuleLink($this->name, 'cron', ['token' => Configuration::get(static::EXECUTION_TOKEN)], true, (int) Configuration::get('PS_DEFAULT_LANG')).'"',
+                    'cronjob_freq_php' => '* * * * * curl '.(\Configuration::get('PS_SSL_ENABLED') ? '-k ' : null).'"'.$this->context->link->getModuleLink($this->name, 'cron', ['token' => Configuration::get(static::EXECUTION_TOKEN)], true, (int) Configuration::get('PS_DEFAULT_LANG')).'"',
+                    'cronjob_freq_cli' => '* * * * * php '.__DIR__.'/controllers/front/cron.php --token='.Configuration::get(static::EXECUTION_TOKEN),
                 ]
             );
         } catch (PrestaShopException $e) {
@@ -451,8 +452,8 @@ class CronJobs extends Module
             return '';
         }
 
-        if ((Tools::isSubmit('submitNewCronJob') || Tools::isSubmit('newcronjobs') || Tools::isSubmit('updatecronjobs')) &&
-            ((isset($submitCron) == false) || ($submitCron === false))
+        if ((Tools::isSubmit('submitNewCronJob') || Tools::isSubmit('newcronjobs') || Tools::isSubmit('updatecronjobs'))
+            && empty($submitCron)
         ) {
             try {
                 $backUrl = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules');
@@ -585,6 +586,7 @@ class CronJobs extends Module
     {
         if ((Tools::isSubmit('description')) &&
             (Tools::isSubmit('task')) &&
+            (Tools::isSubmit('minute')) &&
             (Tools::isSubmit('hour')) &&
             (Tools::isSubmit('day')) &&
             (Tools::isSubmit('month')) &&
@@ -671,6 +673,7 @@ class CronJobs extends Module
                 [
                     'description' => pSQL(Tools::getValue('description')),
                     'task'        => urlencode(Tools::getValue('task')),
+                    'minute'      => (int) Tools::getValue('minute'),
                     'hour'        => (int) Tools::getValue('hour'),
                     'day'         => (int) Tools::getValue('day'),
                     'month'       => (int) Tools::getValue('month'),
@@ -831,7 +834,7 @@ class CronJobs extends Module
      */
     protected function postProcessUpdateJobStatus()
     {
-        if (Tools::isSubmit('id_cronjob') == false) {
+        if (!Tools::isSubmit('id_cronjob')) {
             return;
         }
 
@@ -923,7 +926,7 @@ class CronJobs extends Module
     {
         $crons = Hook::getHookModuleExecList('actionCronJob');
 
-        if ($crons == false) {
+        if (empty($crons)) {
             return;
         }
 
@@ -960,7 +963,7 @@ class CronJobs extends Module
                 Logger::addLog("Cronjobs module error: {$e->getMessage()}");
             }
 
-            if ($cronjob == false) {
+            if (!$cronjob) {
                 $this->registerModuleHook($idModule);
             }
         }

@@ -23,19 +23,21 @@
 *}
 
 <div class="panel">
-	<h3>{l s='What does this module do?' mod='cronjobs'}</h3>
-	<p>
-		<img src="{$module_dir|escape:'htmlall':'UTF-8'}/logo.png" class="pull-left" id="cronjobs-logo" />
-		{l s='Originally, cron is a Unix system tool that provides time-based job scheduling: you can create many cron jobs, which are then run periodically at fixed times, dates, or intervals.' mod='cronjobs'}
-		<br/>
-		{l s='This module provides you with a cron-like tool: you can create jobs which will call a given set of secure URLs to your thirty bees store, thus triggering updates and other automated tasks.' mod='cronjobs'}
-	</p>
+  <h3>{l s='What does this module do?' mod='cronjobs'}</h3>
+  <p>
+    <img src="{$module_dir|escape:'htmlall':'UTF-8'}/logo.png" class="pull-left" id="cronjobs-logo"/>
+    {l s='Originally, cron is a Unix system tool that provides time-based job scheduling: you can create many cron jobs, which are then run periodically at fixed times, dates, or intervals.' mod='cronjobs'}
+    <br/>
+    {l s='This module provides you with a cron-like tool: you can create jobs which will call a given set of secure URLs to your thirty bees store, thus triggering updates and other automated tasks.' mod='cronjobs'}
+  </p>
 
-	<div class="alert alert-info">
-		<p>{$curl_info|escape:'htmlall':'UTF-8'}</p>
-		<br />
-		<ul class="list-unstyled">
-			<li><code>{$cronjob_freq|escape:'htmlall':'UTF-8'}</code></li>
-		</ul>
-	</div>
+  <div class="alert alert-info">
+    <p>{$curl_info|escape:'htmlall':'UTF-8'}</p>
+    <br/>
+    <ul class="list-unstyled">
+      <li><code>{$cronjob_freq_php|escape:'htmlall':'UTF-8'}</code></li>
+      <li>{l s='or' mod='cronjobs'}</li>
+      <li><code>{$cronjob_freq_cli|escape:'htmlall':'UTF-8'}</code></li>
+    </ul>
+  </div>
 </div>
