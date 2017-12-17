@@ -56,8 +56,7 @@ class CronJobs extends Module
     {
         $this->name = 'cronjobs';
         $this->tab = 'administration';
-        $this->version = '2.1.0';
-        $this->module_key = '';
+        $this->version = '2.1.1';
 
         $this->controllers = ['cron'];
 
@@ -586,7 +585,7 @@ class CronJobs extends Module
     {
         if ((Tools::isSubmit('description')) &&
             (Tools::isSubmit('task')) &&
-            (Tools::isSubmit('minute')) &&
+            (Tools::isSubmit('')) &&
             (Tools::isSubmit('hour')) &&
             (Tools::isSubmit('day')) &&
             (Tools::isSubmit('month')) &&
@@ -871,13 +870,7 @@ class CronJobs extends Module
         $helper->identifier = 'id_cronjob';
         $helper->actions = ['edit', 'delete'];
 
-        try {
-            $values = CronJobsForms::getTasksListValues();
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
-        }
+        $values = CronJobsForms::getTasksListValues();
         $helper->listTotal = count($values);
         $helper->tpl_vars = ['show_filters' => false];
 
