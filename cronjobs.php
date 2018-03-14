@@ -585,7 +585,7 @@ class CronJobs extends Module
     {
         if ((Tools::isSubmit('description')) &&
             (Tools::isSubmit('task')) &&
-            (Tools::isSubmit('')) &&
+            (Tools::isSubmit('minute')) &&
             (Tools::isSubmit('hour')) &&
             (Tools::isSubmit('day')) &&
             (Tools::isSubmit('month')) &&
