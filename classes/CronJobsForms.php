@@ -25,6 +25,17 @@
 
 namespace CronJobsModule;
 
+use Adapter_Exception;
+use Configuration;
+use Context;
+use CronJobs;
+use Db;
+use DbQuery;
+use Module;
+use PrestaShopDatabaseException;
+use PrestaShopException;
+use Tools;
+
 if (!defined('_TB_VERSION_')) {
     exit;
 }
@@ -36,16 +47,20 @@ if (!defined('_TB_VERSION_')) {
  */
 class CronJobsForms
 {
-    /** @var \CronJobs $module */
+    /** @var CronJobs $module */
     protected static $module;
 
     /**
-     * @return \CronJobs
+     * @return CronJobs
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getModule()
     {
         if (!static::$module) {
-            static::$module = \Module::getInstanceByName('cronjobs');
+            static::$module = Module::getInstanceByName('cronjobs');
         }
 
         return static::$module;
@@ -56,6 +71,9 @@ class CronJobsForms
      * @param bool   $update
      *
      * @return array
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getJobForm($title = 'New cron task', $update = false)
     {
@@ -72,54 +90,36 @@ class CronJobsForms
             ],
         ];
 
-        $idShop = (int) \Context::getContext()->shop->id;
-        $idShopGroup = (int) \Context::getContext()->shop->id_shop_group;
+        $idShop = (int) Context::getContext()->shop->id;
+        $idShopGroup = (int) Context::getContext()->shop->id_shop_group;
 
-        try {
-            $currenciesCronUrl = \Tools::getShopDomain(true, true).__PS_BASE_URI__.basename(_PS_ADMIN_DIR_);
-            $currenciesCronUrl .= '/cron_currency_rates.php?secure_key='.md5(_COOKIE_KEY_.\Configuration::get('PS_SHOP_NAME'));
+        $currenciesCronUrl = Tools::getShopDomain(true, true).__PS_BASE_URI__.basename(_PS_ADMIN_DIR_);
+        $currenciesCronUrl .= '/cron_currency_rates.php?secure_key='.md5(_COOKIE_KEY_.Configuration::get('PS_SHOP_NAME'));
 
-            if ($update && (\Tools::isSubmit('id_cronjob'))) {
-                $idCronjob = (int) \Tools::getValue('id_cronjob');
-                $idModule = (int) \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                    (new \DbQuery())
-                        ->select('`id_module`')
-                        ->from(\Cronjobs::TABLE)
-                        ->where('`id_cronjob` = '.(int) $idCronjob)
-                        ->where('`id_shop` = '.(int) $idShop)
-                        ->where('`id_shop_group` = '.(int) $idShopGroup)
-                );
+        if ($update && (\Tools::isSubmit('id_cronjob'))) {
+            $idCronjob = (int) \Tools::getValue('id_cronjob');
+            $idModule = (int) \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new \DbQuery())
+                    ->select('`id_module`')
+                    ->from(\Cronjobs::TABLE)
+                    ->where('`id_cronjob` = '.(int) $idCronjob)
+                    ->where('`id_shop` = '.(int) $idShop)
+                    ->where('`id_shop_group` = '.(int) $idShopGroup)
+            );
 
-                if ($idModule) {
-                    $form[0]['form']['input'][] = [
-                        'type'        => 'free',
-                        'name'        => 'description',
-                        'label'       => static::getModule()->l('Task description', 'CronJobsForms'),
-                        'placeholder' => static::getModule()->l('Update my currencies', 'CronJobsForms'),
-                    ];
+            if ($idModule) {
+                $form[0]['form']['input'][] = [
+                    'type'        => 'free',
+                    'name'        => 'description',
+                    'label'       => static::getModule()->l('Task description', 'CronJobsForms'),
+                    'placeholder' => static::getModule()->l('Update my currencies', 'CronJobsForms'),
+                ];
 
-                    $form[0]['form']['input'][] = [
-                        'type'  => 'free',
-                        'name'  => 'task',
-                        'label' => static::getModule()->l('Target link', 'CronJobsForms'),
-                    ];
-                } else {
-                    $form[0]['form']['input'][] = [
-                        'type'        => 'text',
-                        'name'        => 'description',
-                        'label'       => static::getModule()->l('Task description', 'CronJobsForms'),
-                        'desc'        => static::getModule()->l('Enter a description for this task.', 'CronJobsForms'),
-                        'placeholder' => static::getModule()->l('Update my currencies', 'CronJobsForms'),
-                    ];
-
-                    $form[0]['form']['input'][] = [
-                        'type'        => 'text',
-                        'name'        => 'task',
-                        'label'       => static::getModule()->l('Target link', 'CronJobsForms'),
-                        'desc'        => static::getModule()->l('Set the link of your cron task.', 'CronJobsForms'),
-                        'placeholder' => $currenciesCronUrl,
-                    ];
-                }
+                $form[0]['form']['input'][] = [
+                    'type'  => 'free',
+                    'name'  => 'task',
+                    'label' => static::getModule()->l('Target link', 'CronJobsForms'),
+                ];
             } else {
                 $form[0]['form']['input'][] = [
                     'type'        => 'text',
@@ -133,68 +133,84 @@ class CronJobsForms
                     'type'        => 'text',
                     'name'        => 'task',
                     'label'       => static::getModule()->l('Target link', 'CronJobsForms'),
-                    'desc'        => static::getModule()->l('Do not forget to use an absolute URL to make it valid! The link also has to be on the same domain as the shop.', 'CronJobsForms'),
+                    'desc'        => static::getModule()->l('Set the link of your cron task.', 'CronJobsForms'),
                     'placeholder' => $currenciesCronUrl,
                 ];
             }
+        } else {
+            $form[0]['form']['input'][] = [
+                'type'        => 'text',
+                'name'        => 'description',
+                'label'       => static::getModule()->l('Task description', 'CronJobsForms'),
+                'desc'        => static::getModule()->l('Enter a description for this task.', 'CronJobsForms'),
+                'placeholder' => static::getModule()->l('Update my currencies', 'CronJobsForms'),
+            ];
 
             $form[0]['form']['input'][] = [
-                'type'    => 'select',
-                'name'    => 'minute',
-                'label'   => static::getModule()->l('Task frequency', 'CronJobsForms'),
-                'desc'    => static::getModule()->l('At what minute should this task be executed?', 'CronJobsForms'),
-                'options' => [
-                    'query' => static::getMinutesFormOptions(),
-                    'id'    => 'id', 'name' => 'name',
-                ],
+                'type'        => 'text',
+                'name'        => 'task',
+                'label'       => static::getModule()->l('Target link', 'CronJobsForms'),
+                'desc'        => static::getModule()->l('Do not forget to use an absolute URL to make it valid! The link also has to be on the same domain as the shop.', 'CronJobsForms'),
+                'placeholder' => $currenciesCronUrl,
             ];
-            $form[0]['form']['input'][] = [
-                'type'    => 'select',
-                'name'    => 'hour',
-                'desc'    => static::getModule()->l('At what hour should this task be executed?', 'CronJobsForms'),
-                'options' => [
-                    'query' => static::getHoursFormOptions(),
-                    'id'    => 'id', 'name' => 'name',
-                ],
-            ];
-            $form[0]['form']['input'][] = [
-                'type'    => 'select',
-                'name'    => 'day',
-                'desc'    => static::getModule()->l('On which day of the month should this task be executed?', 'CronJobsForms'),
-                'options' => [
-                    'query' => static::getDaysFormOptions(),
-                    'id'    => 'id', 'name' => 'name',
-                ],
-            ];
-            $form[0]['form']['input'][] = [
-                'type'    => 'select',
-                'name'    => 'month',
-                'desc'    => static::getModule()->l('On what month should this task be executed?', 'CronJobsForms'),
-                'options' => [
-                    'query' => static::getMonthsFormOptions(),
-                    'id'    => 'id', 'name' => 'name',
-                ],
-            ];
-            $form[0]['form']['input'][] = [
-                'type'    => 'select',
-                'name'    => 'day_of_week',
-                'desc'    => static::getModule()->l('On which day of the week should this task be executed?', 'CronJobsForms'),
-                'options' => [
-                    'query' => static::getDaysofWeekFormOptions(),
-                    'id'    => 'id', 'name' => 'name',
-                ],
-            ];
-        } catch (\PrestaShopException $e) {
-            \Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return [];
         }
+
+        $form[0]['form']['input'][] = [
+            'type'    => 'select',
+            'name'    => 'minute',
+            'label'   => static::getModule()->l('Task frequency', 'CronJobsForms'),
+            'desc'    => static::getModule()->l('At what minute should this task be executed?', 'CronJobsForms'),
+            'options' => [
+                'query' => static::getMinutesFormOptions(),
+                'id'    => 'id', 'name' => 'name',
+            ],
+        ];
+        $form[0]['form']['input'][] = [
+            'type'    => 'select',
+            'name'    => 'hour',
+            'desc'    => static::getModule()->l('At what hour should this task be executed?', 'CronJobsForms'),
+            'options' => [
+                'query' => static::getHoursFormOptions(),
+                'id'    => 'id', 'name' => 'name',
+            ],
+        ];
+        $form[0]['form']['input'][] = [
+            'type'    => 'select',
+            'name'    => 'day',
+            'desc'    => static::getModule()->l('On which day of the month should this task be executed?', 'CronJobsForms'),
+            'options' => [
+                'query' => static::getDaysFormOptions(),
+                'id'    => 'id', 'name' => 'name',
+            ],
+        ];
+        $form[0]['form']['input'][] = [
+            'type'    => 'select',
+            'name'    => 'month',
+            'desc'    => static::getModule()->l('On what month should this task be executed?', 'CronJobsForms'),
+            'options' => [
+                'query' => static::getMonthsFormOptions(),
+                'id'    => 'id', 'name' => 'name',
+            ],
+        ];
+        $form[0]['form']['input'][] = [
+            'type'    => 'select',
+            'name'    => 'day_of_week',
+            'desc'    => static::getModule()->l('On which day of the week should this task be executed?', 'CronJobsForms'),
+            'options' => [
+                'query' => static::getDaysofWeekFormOptions(),
+                'id'    => 'id', 'name' => 'name',
+            ],
+        ];
 
         return $form;
     }
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected static function getMinutesFormOptions()
     {
@@ -209,6 +225,10 @@ class CronJobsForms
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected static function getHoursFormOptions()
     {
@@ -223,6 +243,10 @@ class CronJobsForms
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected static function getDaysFormOptions()
     {
@@ -237,6 +261,10 @@ class CronJobsForms
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected static function getMonthsFormOptions()
     {
@@ -251,6 +279,10 @@ class CronJobsForms
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected static function getDaysofWeekFormOptions()
     {
@@ -265,6 +297,10 @@ class CronJobsForms
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getTasksList()
     {
@@ -288,112 +324,95 @@ class CronJobsForms
     public static function getNewJobFormValues()
     {
         return [
-            'description' => \Tools::safeOutput(\Tools::getValue('description', null)),
-            'task'        => \Tools::safeOutput(\Tools::getValue('task', null)),
-            'minute'      => (int) \Tools::getValue('minute', -1),
-            'hour'        => (int) \Tools::getValue('hour', -1),
-            'day'         => (int) \Tools::getValue('day', -1),
-            'month'       => (int) \Tools::getValue('month', -1),
-            'day_of_week' => (int) \Tools::getValue('day_of_week', -1),
+            'description' => Tools::safeOutput(Tools::getValue('description', null)),
+            'task'        => Tools::safeOutput(Tools::getValue('task', null)),
+            'minute'      => (int) Tools::getValue('minute', -1),
+            'hour'        => (int) Tools::getValue('hour', -1),
+            'day'         => (int) Tools::getValue('day', -1),
+            'month'       => (int) Tools::getValue('month', -1),
+            'day_of_week' => (int) Tools::getValue('day_of_week', -1),
         ];
     }
 
     /**
      * @return array
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getUpdateJobFormValues()
     {
-        $idShop = (int) \Context::getContext()->shop->id;
-        $idShopGroup = (int) \Context::getContext()->shop->id_shop_group;
+        $idShop = (int) Context::getContext()->shop->id;
+        $idShopGroup = (int) Context::getContext()->shop->id_shop_group;
 
         $idCronjob = (int) \Tools::getValue('id_cronjob');
-        try {
-            $cron = \Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
-                (new \DbQuery())
-                    ->select('*')
-                    ->from(bqSQL(static::getModule()->name))
-                    ->where('`id_cronjob` = '.(int) $idCronjob)
-                    ->where('`id_shop` = '.(int) $idShop)
-                    ->where('`id_shop_group` = '.(int) $idShopGroup)
-            );
-        } catch (\PrestaShopException $e) {
-            $cron = false;
-        }
+        $cron = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
+            (new DbQuery())
+                ->select('*')
+                ->from(bqSQL(static::getModule()->name))
+                ->where('`id_cronjob` = '.(int) $idCronjob)
+                ->where('`id_shop` = '.(int) $idShop)
+                ->where('`id_shop_group` = '.(int) $idShopGroup)
+        );
 
         if (empty($cron['id_module'])) {
-            $description = \Tools::safeOutput(\Tools::getValue('description', $cron['description']));
-            $task = urldecode(\Tools::getValue('task', $cron['task']));
+            $description = Tools::safeOutput(Tools::getValue('description', $cron['description']));
+            $task = urldecode(Tools::getValue('task', $cron['task']));
         } else {
-            try {
-                $moduleName = \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue((new \DbQuery())->select('`name`')->from('module')->where('`id_module` = '.(int) $cron['id_module']));
-                $description = '<p class="form-control-static"><strong>'.\Tools::safeOutput(\Module::getModuleName($moduleName)).'</strong></p>';
-                $task = '<p class="form-control-static"><strong>'.static::getModule()->l('Module - Hook', 'CronJobsForms').'</strong></p>';
-            } catch (\PrestaShopException $e) {
-            }
+            $moduleName = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue((new DbQuery())->select('`name`')->from('module')->where('`id_module` = '.(int) $cron['id_module']));
+            $description = '<p class="form-control-static"><strong>'.Tools::safeOutput(Module::getModuleName($moduleName)).'</strong></p>';
+            $task = '<p class="form-control-static"><strong>'.static::getModule()->l('Module - Hook', 'CronJobsForms').'</strong></p>';
         }
 
         return [
             'description' => $description,
             'task'        => $task,
-            'minute'      => (int) \Tools::getValue('minute', $cron['minute']),
-            'hour'        => (int) \Tools::getValue('hour', $cron['hour']),
-            'day'         => (int) \Tools::getValue('day', $cron['day']),
-            'month'       => (int) \Tools::getValue('month', $cron['month']),
-            'day_of_week' => (int) \Tools::getValue('day_of_week', $cron['day_of_week']),
+            'minute'      => (int) Tools::getValue('minute', $cron['minute']),
+            'hour'        => (int) Tools::getValue('hour', $cron['hour']),
+            'day'         => (int) Tools::getValue('day', $cron['day']),
+            'month'       => (int) Tools::getValue('month', $cron['month']),
+            'day_of_week' => (int) Tools::getValue('day_of_week', $cron['day_of_week']),
         ];
     }
 
     /**
      * @return array|false|\mysqli_result|null|\PDOStatement|resource
+     * @throws \Adapter_Exception
+     * @throws \PrestaShopDatabaseException
+     * @throws \PrestaShopException
      */
     public static function getTasksListValues()
     {
-        $idShop = (int) \Context::getContext()->shop->id;
-        $idShopGroup = (int) \Context::getContext()->shop->id_shop_group;
+        $idShop = (int) Context::getContext()->shop->id;
+        $idShopGroup = (int) Context::getContext()->shop->id_shop_group;
 
         static::getModule()->addNewModulesTasks();
-        try {
-            $crons = \Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
-                (new \DbQuery())
-                    ->select('*')
-                    ->from(bqSQL(static::getModule()->name))
-                    ->where('`id_shop` = '.(int) $idShop)
-                    ->where('`id_shop_group` = '.(int) $idShopGroup)
-            );
-        } catch (\PrestaShopException $e) {
-            $crons = [];
-        }
+        $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
+            (new DbQuery())
+                ->select('*')
+                ->from(bqSQL(static::getModule()->name))
+                ->where('`id_shop` = '.(int) $idShop)
+                ->where('`id_shop_group` = '.(int) $idShopGroup)
+        );
 
         foreach ($crons as $key => &$cron) {
             if (!empty($cron['id_module'])) {
-                try {
-                    $module = \Module::getInstanceById((int) $cron['id_module']);
-                } catch (\PrestaShopException $e) {
-                    $module = false;
-                }
-
+                $module = Module::getInstanceById((int) $cron['id_module']);
                 if (!$module) {
-                    try {
-                        \Db::getInstance()->delete(\Cronjobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
-                    } catch (\PrestaShopException $e) {
-                        continue;
-                    }
+                    Db::getInstance()->delete(\Cronjobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
                     unset($crons[$key]);
                     break;
                 }
 
-                try {
-                    $moduleName = \Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                        (new \DbQuery())
-                            ->select('`name`')
-                            ->from('module')
-                            ->where('`id_module` = '.(int) $cron['id_module'])
-                    );
-                } catch (\PrestaShopException $e) {
-                    continue;
-                }
+                $moduleName = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                    (new DbQuery())
+                        ->select('`name`')
+                        ->from('module')
+                        ->where('`id_module` = '.(int) $cron['id_module'])
+                );
 
-                $cron['description'] = \Tools::safeOutput(\Module::getModuleName($moduleName));
+                $cron['description'] = Tools::safeOutput(Module::getModuleName($moduleName));
                 $cron['task'] = static::getModule()->l('Module - Hook', 'CronJobsForms');
             } else {
                 $cron['task'] = urldecode($cron['task']);

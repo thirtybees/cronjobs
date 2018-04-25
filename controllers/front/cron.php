@@ -61,14 +61,14 @@ class CronJobscronModuleFrontController extends ModuleFrontController
 
     /**
      * AdminCronJobsController constructor.
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function __construct()
     {
-        try {
-            if (Tools::getValue('token') != Configuration::getGlobalValue(\CronJobs::EXECUTION_TOKEN)) {
-                die('Invalid token');
-            }
-        } catch (PrestaShopException $e) {
+        if (Tools::getValue('token') != Configuration::getGlobalValue(\CronJobs::EXECUTION_TOKEN)) {
             die('Invalid token');
         }
 
@@ -81,6 +81,8 @@ class CronJobscronModuleFrontController extends ModuleFrontController
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function postProcess()
     {
@@ -96,50 +98,36 @@ class CronJobscronModuleFrontController extends ModuleFrontController
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function runModulesCrons()
     {
-        try {
-            $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
-                (new DbQuery())
-                    ->select('*')
-                    ->from(\Cronjobs::TABLE)
-                    ->where('`active` = 1')
-                    ->where('`id_module` IS NOT NULL')
-            );
-        } catch (PrestaShopException $e) {
-            $crons = false;
-        }
+        $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
+            (new DbQuery())
+                ->select('*')
+                ->from(\Cronjobs::TABLE)
+                ->where('`active` = 1')
+                ->where('`id_module` IS NOT NULL')
+        );
 
         if (is_array($crons) && (count($crons) > 0)) {
             foreach ($crons as &$cron) {
-                try {
-                    $module = Module::getInstanceById((int) $cron['id_module']);
-                } catch (PrestaShopException $e) {
-                    $module = false;
-                }
+                $module = Module::getInstanceById((int) $cron['id_module']);
 
                 if (!$module) {
-                    try {
-                        Db::getInstance()->delete(\Cronjobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
-                    } catch (PrestaShopException $e) {
-                        Logger::AddLog("Cronjobs module error: {$e->getMessage()}");
-                    }
+                    Db::getInstance()->delete(\Cronjobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
                     break;
                 } elseif ($this->shouldBeExecuted($cron)) {
                     Hook::exec('actionCronJob', [], $cron['id_module']);
-                    try {
-                        Db::getInstance()->update(
-                            \Cronjobs::TABLE,
-                            [
-                                'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
-                                'active'     => ['type' => 'sql', 'value' => 'IF(`one_shot` = TRUE, FALSE, `active`)'],
-                            ],
-                            '`id_cronjob` = '.(int) $cron['id_cronjob']
-                        );
-                    } catch (PrestaShopException $e) {
-                        Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-                    }
+                    Db::getInstance()->update(
+                        \Cronjobs::TABLE,
+                        [
+                            'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
+                            'active'     => ['type' => 'sql', 'value' => 'IF(`one_shot` = TRUE, FALSE, `active`)'],
+                        ],
+                        '`id_cronjob` = '.(int) $cron['id_cronjob']
+                    );
                 }
             }
         }
@@ -167,20 +155,18 @@ class CronJobscronModuleFrontController extends ModuleFrontController
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function runTasksCrons()
     {
-        try {
-            $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
-                (new DbQuery())
-                    ->select('*')
-                    ->from(\Cronjobs::TABLE)
-                    ->where('`active` = 1')
-                    ->where('`id_module` IS NULL')
-            );
-        } catch (PrestaShopException $e) {
-            $crons = false;
-        }
+        $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
+            (new DbQuery())
+                ->select('*')
+                ->from(\Cronjobs::TABLE)
+                ->where('`active` = 1')
+                ->where('`id_module` IS NULL')
+        );
 
         $guzzle = new \GuzzleHttp\Client([
             'timeout' => 10000000,
@@ -189,20 +175,14 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         if (is_array($crons) && (count($crons) > 0)) {
             foreach ($crons as &$cron) {
                 if ($this->shouldBeExecuted($cron)) {
-                    try {
-                        $guzzle->get(urldecode($cron['task']));
-                    } catch (Exception $e) {
-                    }
-                    try {
-                        Db::getInstance()->update(
-                            \Cronjobs::TABLE,
-                            [
-                                'updated_at' => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
-                            ],
-                            '`id_cronjob` = '.(int) $cron['id_cronjob']
-                        );
-                    } catch (PrestaShopException $e) {
-                    }
+                    $guzzle->get(urldecode($cron['task']));
+                    Db::getInstance()->update(
+                        \Cronjobs::TABLE,
+                        [
+                            'updated_at' => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
+                        ],
+                        '`id_cronjob` = '.(int) $cron['id_cronjob']
+                    );
                 }
             }
         }

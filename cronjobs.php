@@ -116,6 +116,9 @@ class CronJobs extends Module
      * @param int $idModule
      *
      * @return bool
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function isActive($idModule)
     {
@@ -125,17 +128,11 @@ class CronJobs extends Module
             return false;
         }
 
-        try {
-            return (bool) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                (new DbQuery())->select('`active`')
-                    ->from('cronjobs')
-                    ->where('`id_module` = '.(int) $idModule)
-            );
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return false;
-        }
+        return (bool) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+            (new DbQuery())->select('`active`')
+                ->from('cronjobs')
+                ->where('`id_module` = '.(int) $idModule)
+        );
     }
 
     /**
@@ -146,6 +143,8 @@ class CronJobs extends Module
      * @param array  $execution
      *
      * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function addOneShotTask($task, $description, $execution = [])
     {
@@ -156,42 +155,35 @@ class CronJobs extends Module
         $idShop = (int) Context::getContext()->shop->id;
         $idShopGroup = (int) Context::getContext()->shop->id_shop_group;
 
-        try {
-            if (Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                (new DbQuery())->select('`active`')
-                    ->from(static::TABLE)
-                    ->where('`task` = '.urlencode($task))
-                    ->where('`updated_at` = IS NULL')
-                    ->where('`one_shot` IS TRUE')
-                    ->where('`id_shop` = \''.$idShop.'\'')
-                    ->where('`id_shop_group` = \''.$idShopGroup.'\''))
-            ) {
-                return true;
-            }
-        } catch (PrestaShopException $e) {
+        if (Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+            (new DbQuery())->select('`active`')
+                ->from(static::TABLE)
+                ->where('`task` = '.urlencode($task))
+                ->where('`updated_at` = IS NULL')
+                ->where('`one_shot` IS TRUE')
+                ->where('`id_shop` = \''.$idShop.'\'')
+                ->where('`id_shop_group` = \''.$idShopGroup.'\''))
+        ) {
+            return true;
         }
 
         if (count($execution) == 0) {
-            try {
-                return Db::getInstance()->insert(
-                    static::TABLE,
-                    [
-                        'description'   => pSQL($description),
-                        'task'          => urlencode($task),
-                        'hour'          => '0',
-                        'day'           => static::EACH,
-                        'month'         => static::EACH,
-                        'day_of_week'   => static::EACH,
-                        'updated_at'    => null,
-                        'one_shot'      => true,
-                        'active'        => true,
-                        'id_shop'       => $idShop,
-                        'id_shop_group' => $idShopGroup,
-                    ]
-                );
-            } catch (PrestaShopException $e) {
-                Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-            }
+            return Db::getInstance()->insert(
+                static::TABLE,
+                [
+                    'description'   => pSQL($description),
+                    'task'          => urlencode($task),
+                    'hour'          => '0',
+                    'day'           => static::EACH,
+                    'month'         => static::EACH,
+                    'day_of_week'   => static::EACH,
+                    'updated_at'    => null,
+                    'one_shot'      => true,
+                    'active'        => true,
+                    'id_shop'       => $idShop,
+                    'id_shop_group' => $idShopGroup,
+                ]
+            );
         } else {
             $isFrequencyValid = true;
             $minute = (int) $execution['minute'];
@@ -207,27 +199,23 @@ class CronJobs extends Module
             $isFrequencyValid = (($dayOfWeek >= -1) && ($dayOfWeek < 7) && $isFrequencyValid);
 
             if ($isFrequencyValid) {
-                try {
-                    return Db::getInstance()->insert(
-                        static::TABLE,
-                        [
-                            'description'   => psQL($description),
-                            'task'          => urlencode($task),
-                            'minute'        => $minute,
-                            'hour'          => $hour,
-                            'day'           => $day,
-                            'month'         => $month,
-                            'day_of_week'   => $dayOfWeek,
-                            'updated_at'    => null,
-                            'one_shot'      => true,
-                            'active'        => true,
-                            'id_shop'       => $idShop,
-                            'id_shop_group' => $idShopGroup,
-                        ]
-                    );
-                } catch (PrestaShopException $e) {
-                    Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-                }
+                return Db::getInstance()->insert(
+                    static::TABLE,
+                    [
+                        'description'   => psQL($description),
+                        'task'          => urlencode($task),
+                        'minute'        => $minute,
+                        'hour'          => $hour,
+                        'day'           => $day,
+                        'month'         => $month,
+                        'day_of_week'   => $dayOfWeek,
+                        'updated_at'    => null,
+                        'one_shot'      => true,
+                        'active'        => true,
+                        'id_shop'       => $idShop,
+                        'id_shop_group' => $idShopGroup,
+                    ]
+                );
             }
         }
 
@@ -258,40 +246,37 @@ class CronJobs extends Module
 
     /**
      * @return bool
+     *
+     * @throws PrestaShopException
      */
     public function installDb()
     {
-        try {
-            return Db::getInstance()->execute(
-                '
-                CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.static::TABLE.' (
-                `id_cronjob`    INT(11)    NOT NULL AUTO_INCREMENT,
-                `id_module`     INT(11)    DEFAULT NULL,
-                `description`   TEXT       DEFAULT NULL,
-                `task`          TEXT       DEFAULT NULL,
-                `minute`        INT(11)    DEFAULT \'-1\',
-                `hour`          INT(11)    DEFAULT \'-1\',
-                `day`           INT(11)    DEFAULT \'-1\',
-                `month`         INT(11)    DEFAULT \'-1\',
-                `day_of_week`   INT(11)    DEFAULT \'-1\',
-                `updated_at`    DATETIME   DEFAULT NULL,
-                `one_shot`      TINYINT(1) NOT NULL DEFAULT 0,
-                `active`        TINYINT(1) DEFAULT FALSE,
-                `id_shop`       INT(11)    UNSIGNED DEFAULT \'0\',
-                `id_shop_group` INT(11)    UNSIGNED DEFAULT \'0\',
-                PRIMARY KEY(`id_cronjob`),
-                INDEX (`id_module`))
-                ENGINE='._MYSQL_ENGINE_.' default CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
-            );
-        } catch (PrestaShopException $e) {
-            $this->context->controller->errors[] = $e->getMessage();
-
-            return false;
-        }
+        return Db::getInstance()->execute(
+            '
+            CREATE TABLE IF NOT EXISTS '._DB_PREFIX_.static::TABLE.' (
+            `id_cronjob`    INT(11)    NOT NULL AUTO_INCREMENT,
+            `id_module`     INT(11)    DEFAULT NULL,
+            `description`   TEXT       DEFAULT NULL,
+            `task`          TEXT       DEFAULT NULL,
+            `minute`        INT(11)    DEFAULT \'-1\',
+            `hour`          INT(11)    DEFAULT \'-1\',
+            `day`           INT(11)    DEFAULT \'-1\',
+            `month`         INT(11)    DEFAULT \'-1\',
+            `day_of_week`   INT(11)    DEFAULT \'-1\',
+            `updated_at`    DATETIME   DEFAULT NULL,
+            `one_shot`      TINYINT(1) NOT NULL DEFAULT 0,
+            `active`        TINYINT(1) DEFAULT FALSE,
+            `id_shop`       INT(11)    UNSIGNED DEFAULT \'0\',
+            `id_shop_group` INT(11)    UNSIGNED DEFAULT \'0\',
+            PRIMARY KEY(`id_cronjob`),
+            INDEX (`id_module`))
+            ENGINE='._MYSQL_ENGINE_.' default CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci'
+        );
     }
 
     /**
      * @return bool
+     *
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -317,6 +302,9 @@ class CronJobs extends Module
 
     /**
      * @param array $params
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function hookActionModuleRegisterHookAfter($params)
     {
@@ -332,63 +320,51 @@ class CronJobs extends Module
      * @param int $idModule
      *
      * @return bool
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function registerModuleHook($idModule)
     {
-        try {
-            $module = Module::getInstanceById($idModule);
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return false;
-        }
+        $module = Module::getInstanceById($idModule);
         $idShop = (int) Context::getContext()->shop->id;
         $idShopGroup = (int) Context::getContext()->shop->id_shop_group;
 
         if (method_exists($module, 'getCronFrequency')) {
             $frequency = $module->getCronFrequency();
 
-            try {
-                return Db::getInstance()->insert(
-                    static::TABLE,
-                    [
-                        'id_module'     => $idModule,
-                        'minute'        => !empty($frequency['minute']) ? $frequency['minute'] : -1,
-                        'hour'          => $frequency['hour'],
-                        'day'           => $frequency['day'],
-                        'month'         => $frequency['month'],
-                        'day_of_week'   => $frequency['day_of_week'],
-                        'active'        => true,
-                        'id_shop'       => $idShop,
-                        'id_shop_group' => $idShopGroup,
-                    ]
-                );
-            } catch (PrestaShopException $e) {
-                Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-                return false;
-            }
+            return Db::getInstance()->insert(
+                static::TABLE,
+                [
+                    'id_module'     => $idModule,
+                    'minute'        => !empty($frequency['minute']) ? $frequency['minute'] : -1,
+                    'hour'          => $frequency['hour'],
+                    'day'           => $frequency['day'],
+                    'month'         => $frequency['month'],
+                    'day_of_week'   => $frequency['day_of_week'],
+                    'active'        => true,
+                    'id_shop'       => $idShop,
+                    'id_shop_group' => $idShopGroup,
+                ]
+            );
         } else {
-            try {
-                return Db::getInstance()->insert(
-                    static::TABLE,
-                    [
-                        'id_module'     => $idModule,
-                        'active'        => false,
-                        'id_shop'       => $idShop,
-                        'id_shop_group' => $idShopGroup,
-                    ]
-                );
-            } catch (PrestaShopException $e) {
-                Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-                return false;
-            }
+            return Db::getInstance()->insert(
+                static::TABLE,
+                [
+                    'id_module'     => $idModule,
+                    'active'        => false,
+                    'id_shop'       => $idShop,
+                    'id_shop_group' => $idShopGroup,
+                ]
+            );
         }
     }
 
     /**
      * @param array $params
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function hookActionModuleUnRegisterHookAfter($params)
     {
@@ -404,22 +380,23 @@ class CronJobs extends Module
      * @param int $idModule Module ID
      *
      * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function unregisterModuleHook($idModule)
     {
-        try {
-            return Db::getInstance()->delete(static::TABLE, '`id_module` = '.(int) $idModule);
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return false;
-        }
+        return Db::getInstance()->delete(static::TABLE, '`id_module` = '.(int) $idModule);
     }
 
     /**
      * Get module configuration page
      *
      * @return string
+     *
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      */
     public function getContent()
     {
@@ -432,57 +409,39 @@ class CronJobs extends Module
             $submitCron = $this->postProcessUpdateJob();
         }
 
-        try {
-            $this->context->smarty->assign(
-                [
-                    'module_dir'       => $this->_path,
-                    'module_local_dir' => $this->local_path,
-                    'form_errors'      => $this->_errors,
-                    'form_infos'       => $this->warnings,
-                    'form_successes'   => $this->successes,
-                    'curl_info'        => $this->l('To execute your cron tasks, please insert the following line in your cron tasks manager:', 'CronJobsForms'),
-                    'cronjob_freq_php' => '* * * * * curl '.(\Configuration::get('PS_SSL_ENABLED') ? '-k ' : null).'"'.$this->context->link->getModuleLink($this->name, 'cron', ['token' => Configuration::get(static::EXECUTION_TOKEN)], true, (int) Configuration::get('PS_DEFAULT_LANG')).'"',
-                    'cronjob_freq_cli' => '* * * * * php '.__DIR__.'/controllers/front/cron.php --token='.Configuration::get(static::EXECUTION_TOKEN),
-                ]
-            );
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
-        }
+        $this->context->smarty->assign(
+            [
+                'module_dir'       => $this->_path,
+                'module_local_dir' => $this->local_path,
+                'form_errors'      => $this->_errors,
+                'form_infos'       => $this->warnings,
+                'form_successes'   => $this->successes,
+                'curl_info'        => $this->l('To execute your cron tasks, please insert the following line in your cron tasks manager:', 'CronJobsForms'),
+                'cronjob_freq_php' => '* * * * * curl '.(\Configuration::get('PS_SSL_ENABLED') ? '-k ' : null).'"'.$this->context->link->getModuleLink($this->name, 'cron', ['token' => Configuration::get(static::EXECUTION_TOKEN)], true, (int) Configuration::get('PS_DEFAULT_LANG')).'"',
+                'cronjob_freq_cli' => '* * * * * php '.__DIR__.'/controllers/front/cron.php --token='.Configuration::get(static::EXECUTION_TOKEN),
+            ]
+        );
 
         if ((Tools::isSubmit('submitNewCronJob') || Tools::isSubmit('newcronjobs') || Tools::isSubmit('updatecronjobs'))
             && empty($submitCron)
         ) {
-            try {
-                $backUrl = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules');
-            } catch (PrestaShopException $e) {
-                Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-                return '';
-            }
+            $backUrl = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules');
         }
 
         $output = $output.$this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
 
-        try {
-            if (Tools::isSubmit('newcronjobs') || ((isset($submitCron)) && ($submitCron === false))) {
-                $output = $output.$this->renderForm(CronJobsForms::getJobForm(), CronJobsForms::getNewJobFormValues(), 'submitNewCronJob', true, $backUrl);
-            } elseif (Tools::isSubmit('updatecronjobs') && Tools::isSubmit('id_cronjob')) {
-                $formStructure = CronJobsForms::getJobForm('Update cron task', true);
-                $form = $this->renderForm($formStructure, CronJobsForms::getUpdateJobFormValues(), 'submitUpdateCronJob', true, $backUrl, true);
-                $output = $output.$form;
-            } elseif (Tools::isSubmit('deletecronjobs') && Tools::isSubmit('id_cronjob')) {
-                $this->postProcessDeleteCronJob();
-            } elseif (Tools::isSubmit('oneshotcronjobs')) {
-                $this->postProcessUpdateJobOneShot();
-            } elseif (Tools::isSubmit('statuscronjobs')) {
-                $this->postProcessUpdateJobStatus();
-            }
-        } catch (Exception $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
+        if (Tools::isSubmit('newcronjobs') || ((isset($submitCron)) && ($submitCron === false))) {
+            $output = $output.$this->renderForm(CronJobsForms::getJobForm(), CronJobsForms::getNewJobFormValues(), 'submitNewCronJob', true, $backUrl);
+        } elseif (Tools::isSubmit('updatecronjobs') && Tools::isSubmit('id_cronjob')) {
+            $formStructure = CronJobsForms::getJobForm('Update cron task', true);
+            $form = $this->renderForm($formStructure, CronJobsForms::getUpdateJobFormValues(), 'submitUpdateCronJob', true, $backUrl, true);
+            $output = $output.$form;
+        } elseif (Tools::isSubmit('deletecronjobs') && Tools::isSubmit('id_cronjob')) {
+            $this->postProcessDeleteCronJob();
+        } elseif (Tools::isSubmit('oneshotcronjobs')) {
+            $this->postProcessUpdateJobOneShot();
+        } elseif (Tools::isSubmit('statuscronjobs')) {
+            $this->postProcessUpdateJobStatus();
         }
 
         return $output.$this->renderTasksList();
@@ -516,6 +475,8 @@ class CronJobs extends Module
 
     /**
      * @return bool
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function postProcessNewJob()
     {
@@ -528,45 +489,38 @@ class CronJobs extends Module
             $month = (int) Tools::getValue('month');
             $dayOfWeek = (int) Tools::getValue('day_of_week');
 
-            try {
-                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
-                    (new DbQuery())
-                        ->select('`id_cronjob`')
-                        ->from(static::TABLE)
-                        ->where('`task` = \''.pSQL($task).'\'')
-                        ->where('`minute` = \''.pSQL($minute).'\'')
-                        ->where('`hour` = \''.pSQL($hour).'\'')
-                        ->where('`day` = \''.pSQL($day).'\'')
-                        ->where('`month` = \''.pSQL($month).'\'')
-                        ->where('`day_of_week` = \''.pSQL($dayOfWeek).'\'')
-                );
-            } catch (PrestaShopException $e) {
-            }
+            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
+                (new DbQuery())
+                    ->select('`id_cronjob`')
+                    ->from(static::TABLE)
+                    ->where('`task` = \''.pSQL($task).'\'')
+                    ->where('`minute` = \''.pSQL($minute).'\'')
+                    ->where('`hour` = \''.pSQL($hour).'\'')
+                    ->where('`day` = \''.pSQL($day).'\'')
+                    ->where('`month` = \''.pSQL($month).'\'')
+                    ->where('`day_of_week` = \''.pSQL($dayOfWeek).'\'')
+            );
 
             if (!$result) {
                 $idShop = (int) Context::getContext()->shop->id;
                 $idShopGroup = (int) Context::getContext()->shop->id_shop_group;
-                try {
-                    if (Db::getInstance()->insert(
-                        static::TABLE,
-                        [
-                            'description'   => pSQL($description),
-                            'task'          => pSQL($task),
-                            'minute'        => (int) $minute,
-                            'hour'          => (int) $hour,
-                            'day'           => (int) $day,
-                            'month'         => (int) $month,
-                            'day_of_week'   => (int) $dayOfWeek,
-                            'updated_at'    => ['type' => 'sql', 'value' => 'NOW()'],
-                            'active'        => 1,
-                            'id_shop'       => (int) $idShop,
-                            'id_shop_group' => (int) $idShopGroup,
-                        ]
-                    )) {
-                        return $this->setSuccessMessage('The task has been successfully added.');
-                    }
-                } catch (PrestaShopException $e) {
-                    return $this->setErrorMessage('An error occurred: the task could not be added.').' '.$e->getMessage();
+                if (Db::getInstance()->insert(
+                    static::TABLE,
+                    [
+                        'description'   => pSQL($description),
+                        'task'          => pSQL($task),
+                        'minute'        => (int) $minute,
+                        'hour'          => (int) $hour,
+                        'day'           => (int) $day,
+                        'month'         => (int) $month,
+                        'day_of_week'   => (int) $dayOfWeek,
+                        'updated_at'    => ['type' => 'sql', 'value' => 'NOW()'],
+                        'active'        => 1,
+                        'id_shop'       => (int) $idShop,
+                        'id_shop_group' => (int) $idShopGroup,
+                    ]
+                )) {
+                    return $this->setSuccessMessage('The task has been successfully added.');
                 }
 
                 return $this->setErrorMessage('An error occurred: the task could not be added.');
@@ -604,25 +558,19 @@ class CronJobs extends Module
     }
 
     /**
-     * @param $task
+     * @param string $taskUrl
      *
      * @return bool
+     *
+     * @throws PrestaShopException
      */
-    protected static function isTaskURLValid($task)
+    protected static function isTaskURLValid($taskUrl)
     {
-        $task = urlencode($task);
-        try {
-            $shopUrl = urlencode(Tools::getShopDomain(true, true).__PS_BASE_URI__);
-        } catch (PrestaShopException $e) {
-            return false;
-        }
-        try {
-            $shopUrlSsl = urlencode(Tools::getShopDomainSsl(true, true).__PS_BASE_URI__);
-        } catch (PrestaShopException $e) {
-            return false;
-        }
+        $taskUrl = urlencode($taskUrl);
+        $shopUrl = urlencode(Tools::getShopDomain(true, true).__PS_BASE_URI__);
+        $shopUrlSsl = urlencode(Tools::getShopDomainSsl(true, true).__PS_BASE_URI__);
 
-        return ((strpos($task, $shopUrl) === 0) || (strpos($task, $shopUrlSsl) === 0));
+        return ((strpos($taskUrl, $shopUrl) === 0) || (strpos($taskUrl, $shopUrlSsl) === 0));
     }
 
     /**
@@ -659,6 +607,9 @@ class CronJobs extends Module
 
     /**
      * @return bool
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function postProcessUpdateJob()
     {
@@ -666,23 +617,19 @@ class CronJobs extends Module
             return false;
         }
 
-        try {
-            $updated = Db::getInstance()->update(
-                static::TABLE,
-                [
-                    'description' => pSQL(Tools::getValue('description')),
-                    'task'        => urlencode(Tools::getValue('task')),
-                    'minute'      => (int) Tools::getValue('minute'),
-                    'hour'        => (int) Tools::getValue('hour'),
-                    'day'         => (int) Tools::getValue('day'),
-                    'month'       => (int) Tools::getValue('month'),
-                    'day_of_week' => (int) Tools::getValue('day_of_week'),
-                ],
-                '`id_cronjob` = '.(int) Tools::getValue('id_cronjob')
-            );
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-        }
+        $updated = Db::getInstance()->update(
+            static::TABLE,
+            [
+                'description' => pSQL(Tools::getValue('description')),
+                'task'        => urlencode(Tools::getValue('task')),
+                'minute'      => (int) Tools::getValue('minute'),
+                'hour'        => (int) Tools::getValue('hour'),
+                'day'         => (int) Tools::getValue('day'),
+                'month'       => (int) Tools::getValue('month'),
+                'day_of_week' => (int) Tools::getValue('day_of_week'),
+            ],
+            '`id_cronjob` = '.(int) Tools::getValue('id_cronjob')
+        );
 
         if ($updated) {
             return $this->setSuccessMessage('The task has been updated.');
@@ -700,6 +647,9 @@ class CronJobs extends Module
      * @param bool $update
      *
      * @return string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      */
     protected function renderForm($form, $formValues, $action, $cancel = false, $backUrl = false, $update = false)
     {
@@ -708,92 +658,58 @@ class CronJobs extends Module
         $helper->show_toolbar = false;
         $helper->module = $this;
         $helper->default_form_language = $this->context->language->id;
-        try {
-            $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG');
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
-        }
+        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG');
 
         $helper->identifier = $this->identifier;
         $helper->submit_action = $action;
 
-        try {
-            $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
-        }
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
 
         if ($update) {
             $helper->currentIndex .= '&id_cronjob='.(int) Tools::getValue('id_cronjob');
         }
 
-        try {
-            $helper->token = Tools::getAdminTokenLite('AdminModules');
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
 
-            return '';
-        }
+        $helper->tpl_vars = [
+            'fields_value'       => $formValues,
+            'id_language'        => $this->context->language->id,
+            'languages'          => $this->context->controller->getLanguages(),
+            'back_url'           => $backUrl,
+            'show_cancel_button' => $cancel,
+        ];
 
-        try {
-            $helper->tpl_vars = [
-                'fields_value'       => $formValues,
-                'id_language'        => $this->context->language->id,
-                'languages'          => $this->context->controller->getLanguages(),
-                'back_url'           => $backUrl,
-                'show_cancel_button' => $cancel,
-            ];
-
-            return $helper->generateForm($form);
-        } catch (Exception $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
-        }
+        return $helper->generateForm($form);
     }
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function postProcessDeleteCronJob()
     {
         $idCronjob = Tools::getValue('id_cronjob');
-        try {
-            $idModule = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                (new DbQuery())
-                    ->select('`id_module`')
-                    ->from(static::TABLE)
-                    ->where('`id_cronjob` = '.(int) $idCronjob)
-            );
-        } catch (PrestaShopException $e) {
-            $idModule = false;
+        $idModule = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+            (new DbQuery())
+                ->select('`id_module`')
+                ->from(static::TABLE)
+                ->where('`id_cronjob` = '.(int) $idCronjob)
+        );
+
+        if (!$idModule) {
+            Db::getInstance()->delete(static::TABLE, '`id_cronjob` = \''.(int) $idCronjob.'\'');
+        } else {
+            Db::getInstance()->update(static::TABLE, ['active' => 0], '`id_cronjob` = '.(int) $idCronjob);
         }
 
-        try {
-            if (!$idModule) {
-                Db::getInstance()->delete(static::TABLE, '`id_cronjob` = \''.(int) $idCronjob.'\'');
-            } else {
-                Db::getInstance()->update(static::TABLE, ['active' => 0], '`id_cronjob` = '.(int) $idCronjob);
-            }
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return;
-        }
-
-        try {
-            Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules'));
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-        }
+        Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules'));
     }
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function postProcessUpdateJobOneShot()
     {
@@ -803,33 +719,23 @@ class CronJobs extends Module
 
         $idCronjob = (int) Tools::getValue('id_cronjob');
 
-        try {
-            Db::getInstance()->update(
-                static::TABLE,
-                [
-                    'one_shot' => ['type' => 'sql', 'value' => 'IF (`one_shot`, 0, 1)'],
-                ],
-                '`id_cronjob` = '.(int) $idCronjob
-            );
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
+        Db::getInstance()->update(
+            static::TABLE,
+            [
+                'one_shot' => ['type' => 'sql', 'value' => 'IF (`one_shot`, 0, 1)'],
+            ],
+            '`id_cronjob` = '.(int) $idCronjob
+        );
 
-            return;
-        }
-
-        try {
-            Tools::redirectAdmin(
-                $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules')
-            );
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return;
-        }
+        Tools::redirectAdmin(
+            $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules')
+        );
     }
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function postProcessUpdateJobStatus()
     {
@@ -839,25 +745,23 @@ class CronJobs extends Module
 
         $idCronjob = (int) Tools::getValue('id_cronjob');
 
-        try {
-            Db::getInstance()->update(
-                bqSQL($this->name),
-                [
-                    'active' => ['type' => 'sql', 'value' => 'IF(`active`, 0, 1)'],
-                ],
-                '`id_cronjob` = '.(int) $idCronjob
-            );
+        Db::getInstance()->update(
+            bqSQL($this->name),
+            [
+                'active' => ['type' => 'sql', 'value' => 'IF(`active`, 0, 1)'],
+            ],
+            '`id_cronjob` = '.(int) $idCronjob
+        );
 
-            Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules'));
-        } catch (PrestaShopException $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return;
-        }
+        Tools::redirectAdmin($this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules'));
     }
 
     /**
      * @return string
+     * @throws Adapter_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
      */
     protected function renderTasksList()
     {
@@ -874,21 +778,15 @@ class CronJobs extends Module
         $helper->listTotal = count($values);
         $helper->tpl_vars = ['show_filters' => false];
 
-        try {
-            $helper->toolbar_btn['new'] = [
-                'href' => $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&newcronjobs=1&token='.Tools::getAdminTokenLite('AdminModules'),
-                'desc' => $this->l('Add new task'),
-            ];
+        $helper->toolbar_btn['new'] = [
+            'href' => $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&newcronjobs=1&token='.Tools::getAdminTokenLite('AdminModules'),
+            'desc' => $this->l('Add new task'),
+        ];
 
-            $helper->token = Tools::getAdminTokenLite('AdminModules');
-            $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
+        $helper->token = Tools::getAdminTokenLite('AdminModules');
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
 
-            return $helper->generateList($values, CronJobsForms::getTasksList());
-        } catch (Exception $e) {
-            Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-
-            return '';
-        }
+        return $helper->generateList($values, CronJobsForms::getTasksList());
     }
 
     /**
@@ -914,6 +812,8 @@ class CronJobs extends Module
 
     /**
      * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function addNewModulesTasks()
     {
@@ -928,33 +828,21 @@ class CronJobs extends Module
 
         foreach ($crons as $cron) {
             $idModule = (int) $cron['id_module'];
-            try {
-                $module = Module::getInstanceById((int) $cron['id_module']);
-            } catch (PrestaShopException $e) {
-                $module = false;
-            }
+            $module = Module::getInstanceById((int) $cron['id_module']);
 
             if (!$module) {
-                try {
-                    Db::getInstance()->delete($this->name, '`id_cronjob` = \''.(int) $cron['id_cronjob'].'\'');
-                } catch (PrestaShopException $e) {
-                    Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-                }
+                Db::getInstance()->delete($this->name, '`id_cronjob` = \''.(int) $cron['id_cronjob'].'\'');
                 break;
             }
 
-            try {
-                $cronjob = (bool) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                    (new DbQuery())
-                        ->select('`id_cronjob`')
-                        ->from(bqSQL($this->name))
-                        ->where('`id_module` = '.(int) $idModule)
-                        ->where('`id_shop` = '.(int) $idShop)
-                        ->where('`id_shop_group` = '.(int) $idShopGroup)
-                );
-            } catch (PrestaShopException $e) {
-                Logger::addLog("Cronjobs module error: {$e->getMessage()}");
-            }
+            $cronjob = (bool) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('`id_cronjob`')
+                    ->from(bqSQL($this->name))
+                    ->where('`id_module` = '.(int) $idModule)
+                    ->where('`id_shop` = '.(int) $idShop)
+                    ->where('`id_shop_group` = '.(int) $idShopGroup)
+            );
 
             if (!$cronjob) {
                 $this->registerModuleHook($idModule);

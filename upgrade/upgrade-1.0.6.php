@@ -29,12 +29,8 @@ if (!defined('_TB_VERSION_')) {
 
 function upgrade_module_1_0_6($module)
 {
-    try {
-        if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS('SHOW COLUMNS FROM `'._DB_PREFIX_.$module->name.'` LIKE \'one_shot\'')) {
-            Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.$module->name.'` ADD `one_shot` BOOLEAN NOT NULL DEFAULT 0 AFTER `updated_at`');
-        }
-    } catch (PrestaShopException $e) {
-        return false;
+    if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS('SHOW COLUMNS FROM `'._DB_PREFIX_.$module->name.'` LIKE \'one_shot\'')) {
+        Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.$module->name.'` ADD `one_shot` BOOLEAN NOT NULL DEFAULT 0 AFTER `updated_at`');
     }
 
     return true;
