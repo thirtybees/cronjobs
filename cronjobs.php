@@ -173,6 +173,7 @@ class CronJobs extends Module
                 [
                     'description'   => pSQL($description),
                     'task'          => urlencode($task),
+                    'minute'        => '0',
                     'hour'          => '0',
                     'day'           => static::EACH,
                     'month'         => static::EACH,
@@ -337,7 +338,7 @@ class CronJobs extends Module
                 static::TABLE,
                 [
                     'id_module'     => $idModule,
-                    'minute'        => !empty($frequency['minute']) ? $frequency['minute'] : -1,
+                    'minute'        => isset($frequency['minute']) ? $frequency['minute'] : -1,
                     'hour'          => $frequency['hour'],
                     'day'           => $frequency['day'],
                     'month'         => $frequency['month'],
