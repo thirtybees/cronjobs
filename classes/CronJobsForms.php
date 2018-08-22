@@ -201,6 +201,14 @@ class CronJobsForms
                 'id'    => 'id', 'name' => 'name',
             ],
         ];
+		$form[0]['form']['input'][] = [
+                    'type'    => 'text',
+                    'name'    => 'tolerance',
+                    'label'   => static::getModule()->l('Execution tolerance', 'CronJobsForms'),
+                    'desc'    => static::getModule()->l('Time tolerance for executing this task in seconds.', 'CronJobsForms'),
+                    'placeholder'   => '10',
+					'suffix'  => static::getModule()->l('seconds'),
+        ];
 
         return $form;
     }
@@ -305,16 +313,17 @@ class CronJobsForms
     public static function getTasksList()
     {
         return [
-            'description' => ['title' => static::getModule()->l('Task description', 'CronJobsForms'), 'type' => 'text', 'orderby' => false],
-            'task'        => ['title' => static::getModule()->l('Target link', 'CronJobsForms'),      'type' => 'text', 'orderby' => false],
-            'minute'      => ['title' => static::getModule()->l('Minute', 'CronJobsForms'),           'type' => 'text', 'orderby' => false],
-            'hour'        => ['title' => static::getModule()->l('Hour', 'CronJobsForms'),             'type' => 'text', 'orderby' => false],
-            'day'         => ['title' => static::getModule()->l('Day', 'CronJobsForms'),              'type' => 'text', 'orderby' => false],
-            'month'       => ['title' => static::getModule()->l('Month', 'CronJobsForms'),            'type' => 'text', 'orderby' => false],
-            'day_of_week' => ['title' => static::getModule()->l('Day of week', 'CronJobsForms'),      'type' => 'text', 'orderby' => false],
-            'updated_at'  => ['title' => static::getModule()->l('Last execution', 'CronJobsForms'),   'type' => 'text', 'orderby' => false],
-            'one_shot'    => ['title' => static::getModule()->l('One shot', 'CronJobsForms'),         'active' => 'oneshot', 'type' => 'bool', 'align' => 'center'],
-            'active'      => ['title' => static::getModule()->l('Active', 'CronJobsForms'),           'active' => 'status', 'type' => 'bool', 'align' => 'center', 'orderby' => false],
+            'description' => ['title' => static::getModule()->l('Task description', 'CronJobsForms'),    'type' => 'text', 'orderby' => false],
+            'task'        => ['title' => static::getModule()->l('Target link', 'CronJobsForms'),         'type' => 'text', 'orderby' => false],
+            'minute'      => ['title' => static::getModule()->l('Minute', 'CronJobsForms'),              'type' => 'text', 'orderby' => false],
+            'hour'        => ['title' => static::getModule()->l('Hour', 'CronJobsForms'),                'type' => 'text', 'orderby' => false],
+            'day'         => ['title' => static::getModule()->l('Day', 'CronJobsForms'),                 'type' => 'text', 'orderby' => false],
+            'month'       => ['title' => static::getModule()->l('Month', 'CronJobsForms'),               'type' => 'text', 'orderby' => false],
+            'day_of_week' => ['title' => static::getModule()->l('Day of week', 'CronJobsForms'),         'type' => 'text', 'orderby' => false],
+            'tolerance'   => ['title' => static::getModule()->l('Execution tolerance', 'CronJobsForms'), 'type' => 'text', 'orderby' => false],
+            'updated_at'  => ['title' => static::getModule()->l('Last execution', 'CronJobsForms'),      'type' => 'text', 'orderby' => false],
+            'one_shot'    => ['title' => static::getModule()->l('One shot', 'CronJobsForms'),            'active' => 'oneshot', 'type' => 'bool', 'align' => 'center'],
+            'active'      => ['title' => static::getModule()->l('Active', 'CronJobsForms'),              'active' => 'status', 'type' => 'bool', 'align' => 'center', 'orderby' => false],
         ];
     }
 
@@ -331,6 +340,7 @@ class CronJobsForms
             'day'         => (int) Tools::getValue('day', -1),
             'month'       => (int) Tools::getValue('month', -1),
             'day_of_week' => (int) Tools::getValue('day_of_week', -1),
+            'tolerance'   => (int) Tools::getValue('tolerance', 10),
         ];
     }
 
@@ -373,6 +383,7 @@ class CronJobsForms
             'day'         => (int) Tools::getValue('day', $cron['day']),
             'month'       => (int) Tools::getValue('month', $cron['month']),
             'day_of_week' => (int) Tools::getValue('day_of_week', $cron['day_of_week']),
+            'tolerance'   => (int) Tools::getValue('tolerance', $cron['tolerance']),
         ];
     }
 
@@ -423,6 +434,7 @@ class CronJobsForms
             $cron['day'] = ($cron['day'] == -1) ? static::getModule()->l('Every day', 'CronJobsForms') : (int) $cron['day'];
             $cron['month'] = ($cron['month'] == -1) ? static::getModule()->l('Every month', 'CronJobsForms') : static::getModule()->l(date('F', mktime(0, 0, 0, (int) $cron['month'], 1)));
             $cron['day_of_week'] = ($cron['day_of_week'] == -1) ? static::getModule()->l('Every day of the week', 'CronJobsForms') : static::getModule()->l(date('l', mktime(0, 0, 0, 0, (int) $cron['day_of_week'] + 3)));
+            $cron['tolerance'] = ($cron['tolerance'] == 0) ? static::getModule()->l('No tolerance', 'CronJobsForms') : (int) $cron['tolerance'] . ' seconds';
             $cron['updated_at'] = ($cron['updated_at'] == 0) ? static::getModule()->l('Never', 'CronJobsForms') : date('Y-m-d H:i:s', strtotime($cron['updated_at']));
             $cron['one_shot'] = (bool) $cron['one_shot'];
             $cron['active'] = (bool) $cron['active'];
