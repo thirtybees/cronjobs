@@ -178,6 +178,7 @@ class CronJobs extends Module
                     'day'           => static::EACH,
                     'month'         => static::EACH,
                     'day_of_week'   => static::EACH,
+                    'tolerance'     => '0',
                     'updated_at'    => null,
                     'one_shot'      => true,
                     'active'        => true,
@@ -192,6 +193,7 @@ class CronJobs extends Module
             $day = (int) $execution['day'];
             $month = (int) $execution['month'];
             $dayOfWeek = (int) $execution['day_of_week'];
+            $tolerance = (int) $execution['tolerance'];
 
             $isFrequencyValid = (($minute >= -1) && ($minute < 60) && $isFrequencyValid);
             $isFrequencyValid = (($hour >= -1) && ($hour < 24) && $isFrequencyValid);
@@ -210,6 +212,7 @@ class CronJobs extends Module
                         'day'           => $day,
                         'month'         => $month,
                         'day_of_week'   => $dayOfWeek,
+                        'tolerance'     => $tolerance,
                         'updated_at'    => null,
                         'one_shot'      => true,
                         'active'        => true,
@@ -264,6 +267,7 @@ class CronJobs extends Module
             `day`           INT(11)    DEFAULT \'-1\',
             `month`         INT(11)    DEFAULT \'-1\',
             `day_of_week`   INT(11)    DEFAULT \'-1\',
+            `tolerance`     INT(11)    DEFAULT \'0\',
             `updated_at`    DATETIME   DEFAULT NULL,
             `one_shot`      TINYINT(1) NOT NULL DEFAULT 0,
             `active`        TINYINT(1) DEFAULT FALSE,
@@ -343,6 +347,7 @@ class CronJobs extends Module
                     'day'           => $frequency['day'],
                     'month'         => $frequency['month'],
                     'day_of_week'   => $frequency['day_of_week'],
+                    'tolerance'     => 0,
                     'active'        => true,
                     'id_shop'       => $idShop,
                     'id_shop_group' => $idShopGroup,
@@ -489,6 +494,7 @@ class CronJobs extends Module
             $day = (int) Tools::getValue('day');
             $month = (int) Tools::getValue('month');
             $dayOfWeek = (int) Tools::getValue('day_of_week');
+            $tolerance = (int) Tools::getValue('tolerance');
 
             $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
                 (new DbQuery())
@@ -500,6 +506,7 @@ class CronJobs extends Module
                     ->where('`day` = \''.pSQL($day).'\'')
                     ->where('`month` = \''.pSQL($month).'\'')
                     ->where('`day_of_week` = \''.pSQL($dayOfWeek).'\'')
+                    ->where('`tolerance` = \''.pSQL($tolerance).'\'')
             );
 
             if (!$result) {
@@ -515,6 +522,7 @@ class CronJobs extends Module
                         'day'           => (int) $day,
                         'month'         => (int) $month,
                         'day_of_week'   => (int) $dayOfWeek,
+                        'tolerance'     => (int) $tolerance,
                         'updated_at'    => ['type' => 'sql', 'value' => 'NOW()'],
                         'active'        => 1,
                         'id_shop'       => (int) $idShop,
@@ -544,15 +552,17 @@ class CronJobs extends Module
             (Tools::isSubmit('hour')) &&
             (Tools::isSubmit('day')) &&
             (Tools::isSubmit('month')) &&
-            (Tools::isSubmit('day_of_week'))
+            (Tools::isSubmit('day_of_week')) &&
+            (Tools::isSubmit('tolerance'))
         ) {
             $minute = Tools::getValue('minute');
             $hour = Tools::getValue('hour');
             $day = Tools::getValue('day');
             $month = Tools::getValue('month');
             $dayOfWeek = Tools::getValue('day_of_week');
+            $tolerance = Tools::getValue('tolerance');
 
-            return $this->isFrequencyValid($minute, $hour, $day, $month, $dayOfWeek);
+            return $this->isFrequencyValid($minute, $hour, $day, $month, $dayOfWeek, $tolerance);
         }
 
         return false;
@@ -583,7 +593,7 @@ class CronJobs extends Module
      *
      * @return bool
      */
-    protected function isFrequencyValid($minute, $hour, $day, $month, $dayOfWeek)
+    protected function isFrequencyValid($minute, $hour, $day, $month, $dayOfWeek, $tolerance)
     {
         $success = true;
 
@@ -601,6 +611,9 @@ class CronJobs extends Module
         }
         if (!(($dayOfWeek >= -1) && ($dayOfWeek < 7))) {
             $success &= $this->setErrorMessage('The value you chose for the day of the week is not valid.');
+        }
+        if (!(($tolerance >= -1) && ($tolerance < 0))) {
+            $success &= $this->setErrorMessage('The value you chose for the execution tolerance is not valid.');
         }
 
         return $success;
@@ -628,6 +641,7 @@ class CronJobs extends Module
                 'day'         => (int) Tools::getValue('day'),
                 'month'       => (int) Tools::getValue('month'),
                 'day_of_week' => (int) Tools::getValue('day_of_week'),
+                'tolerance'   => (int) Tools::getValue('tolerance'),
             ],
             '`id_cronjob` = '.(int) Tools::getValue('id_cronjob')
         );

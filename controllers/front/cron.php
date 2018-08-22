@@ -148,9 +148,73 @@ class CronJobscronModuleFrontController extends ModuleFrontController
 
         $day = date('Y').'-'.str_pad($month, 2, '0', STR_PAD_LEFT).'-'.str_pad($day, 2, '0', STR_PAD_LEFT);
         $execution = $dayOfWeek.' '.$day.' '.str_pad($hour, 2, '0', STR_PAD_LEFT).':'.str_pad($minute, 2, '0', STR_PAD_LEFT);
-        $now = date('D Y-m-d H:i');
 
-        return !(bool) strcmp($now, $execution);
+        $tolerance = $this->getCronTolerance($cron);
+
+        if ($tolerance > 0) {
+            $seconds = $this->dateTimeDiffToSeconds(new DateTime($execution));
+            if (abs($seconds) <= $tolerance) {
+                return !(bool) $this->wasExecutedInToleranceWhileAgo($cron);
+            } else {
+                return false;
+            }
+        } else {
+            $now = date('D Y-m-d H:i');
+            return !(bool) strcmp($now, $execution);
+        }
+    }
+
+    /**
+     * @param DateTime $dateTime
+     * @param optional DateTime $reference
+     * @return int seconds
+     */
+    protected function dateTimeDiffToSeconds($dateTime, $reference = null)
+    {
+        if ($reference == null) {
+            $reference = new DateTime('now');
+        }
+
+        $interval = $dateTime->getTimestamp() - $reference->getTimestamp();
+
+        return (int) $interval;
+    }
+
+    /**
+     * @param array $cron
+     * @return int seconds
+     */
+    protected function getCronTolerance($cron)
+    {
+        return (int) $cron['tolerance'] == -1 ? 0 : $cron['tolerance'];
+    }
+
+    /**
+     * @param array $cron
+     * @return DateTime
+     */
+    protected function getLastExecutionDate($cron)
+    {
+        return new DateTime($cron['updated_at']);
+    }
+
+    /**
+     * @param array $cron
+     * @return bool
+     */
+    protected function wasExecutedInToleranceWhileAgo($cron)
+    {
+        $tolerance = $this->getCronTolerance($cron);
+        $now = new DateTime('now');
+
+        if (abs($this->dateTimeDiffToSeconds(
+                    $this->getLastExecutionDate($cron),
+                    $now->sub(new DateInterval('PT' . $tolerance . 'S'))
+                )) >= $tolerance) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
