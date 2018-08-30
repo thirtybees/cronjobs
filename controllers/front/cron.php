@@ -252,7 +252,8 @@ class CronJobscronModuleFrontController extends ModuleFrontController
                     Db::getInstance()->update(
                         \Cronjobs::TABLE,
                         [
-                            'updated_at' => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
+                            'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
+                            'active'     => ['type' => 'sql', 'value' => 'IF(`one_shot` = TRUE, FALSE, `active`)'],
                         ],
                         '`id_cronjob` = '.(int) $cron['id_cronjob']
                     );
