@@ -192,7 +192,7 @@ class CronJobscronModuleFrontController extends ModuleFrontController
      */
     protected function getCronTolerance($cron)
     {
-        return (int) $cron['tolernace'] == -1 ? 0 : $cron['tolerance'];
+        return (int) $cron['tolerance'] == -1 ? 0 : $cron['tolerance'];
     }
     
     /**
