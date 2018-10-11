@@ -124,7 +124,7 @@ class CronJobscronModuleFrontController extends ModuleFrontController
                         \Cronjobs::TABLE,
                         [
                             'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
-                            'active'     => ['type' => 'sql', 'value' => 'IF(`one_shot` = TRUE, FALSE, `active`)'],
+                            'active'     => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
                         ],
                         '`id_cronjob` = '.(int) $cron['id_cronjob']
                     );

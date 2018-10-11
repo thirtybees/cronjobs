@@ -6,6 +6,7 @@ tags:
   - cron
   - cron job
   - authomatic run
+  - cronjobs
 description_short: The CRON jobs module allows for you to run some tasks automatically in your shop.
 description: description.md
 images:
