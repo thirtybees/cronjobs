@@ -419,7 +419,7 @@ class CronJobs extends Module
                 'form_successes'   => $this->successes,
                 'curl_info'        => $this->l('To execute your cron tasks, please insert the following line in your cron tasks manager:', 'CronJobsForms'),
                 'cronjob_freq_php' => '* * * * * curl '.(\Configuration::get('PS_SSL_ENABLED') ? '-k ' : null).'"'.$this->context->link->getModuleLink($this->name, 'cron', ['token' => Configuration::get(static::EXECUTION_TOKEN)], true, (int) Configuration::get('PS_DEFAULT_LANG')).'"',
-                'cronjob_freq_cli' => '* * * * * php '.__DIR__.'/controllers/front/cron.php --token='.Configuration::get(static::EXECUTION_TOKEN),
+                'cronjob_freq_cli' => '* * * * * php '.__DIR__.'/controllers/front/cron.php -- --token='.Configuration::get(static::EXECUTION_TOKEN),
             ]
         );
 
