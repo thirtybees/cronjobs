@@ -233,7 +233,7 @@ class CronJobs extends Module
     {
         Configuration::updateValue(static::MODULE_VERSION, $this->version);
 
-        $token = Tools::hash(Tools::getShopDomainSsl().time());
+        $token = md5(Tools::getShopDomainSsl().time());
         Configuration::updateGlobalValue(static::EXECUTION_TOKEN, $token);
 
         if (!parent::install()) {
