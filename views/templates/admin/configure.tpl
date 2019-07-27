@@ -23,21 +23,32 @@
 *}
 
 <div class="panel">
-  <h3>{l s='What does this module do?' mod='cronjobs'}</h3>
-  <p>
-    <img src="{$module_dir|escape:'htmlall':'UTF-8'}/logo.png" class="pull-left" id="cronjobs-logo"/>
-    {l s='Originally, cron is a Unix system tool that provides time-based job scheduling: you can create many cron jobs, which are then run periodically at fixed times, dates, or intervals.' mod='cronjobs'}
-    <br/>
-    {l s='This module provides you with a cron-like tool: you can create jobs which will call a given set of secure URLs to your thirty bees store, thus triggering updates and other automated tasks.' mod='cronjobs'}
-  </p>
+    <h3>{l s='What does this module do?' mod='cronjobs'}</h3>
+    <p>
+        <img src="{$module_dir|escape:'htmlall':'UTF-8'}/logo.png" class="pull-left" id="cronjobs-logo" style="padding-right:10px"/>
+        {l s='Originally, cron is a Unix system tool that provides time-based job scheduling: you can create many cron jobs, which are then run periodically at fixed times, dates, or intervals.' mod='cronjobs'}
+        <br/>
+        {l s='This module provides you with a cron-like tool: you can create jobs which will call a given set of secure URLs to your thirty bees store, thus triggering updates and other automated tasks.' mod='cronjobs'}
+    </p>
 
-  <div class="alert alert-info">
-    <p>{$curl_info|escape:'htmlall':'UTF-8'}</p>
-    <br/>
-    <ul class="list-unstyled">
-      <li><code>{$cronjob_freq_php|escape:'htmlall':'UTF-8'}</code></li>
-      <li>{l s='or' mod='cronjobs'}</li>
-      <li><code>{$cronjob_freq_cli|escape:'htmlall':'UTF-8'}</code></li>
-    </ul>
-  </div>
+    {if $is_running}
+        <div class="alert alert-success">
+            {l s='Cron is up and running, last executed [1]%s[/1] (%s)' mod='cronjobs' sprintf=[$last_executed_text, $last_executed_date] tags=['<strong>']}
+        </div>
+    {else}
+        <div class="alert alert-danger">
+            {l s='Cron is not set up correctly. Please follow set up instructions' mod='cronjobs' }
+        </div>
+    {/if}
+
+    <div class="alert alert-info">
+        <p>{$curl_info|escape:'htmlall':'UTF-8'}</p>
+        <br/>
+        <ul class="list-unstyled">
+            <li><code>{$cronjob_freq_php|escape:'htmlall':'UTF-8'}</code></li>
+            <li>{l s='or' mod='cronjobs'}</li>
+            <li><code>{$cronjob_freq_cli|escape:'htmlall':'UTF-8'}</code></li>
+        </ul>
+    </div>
+
 </div>

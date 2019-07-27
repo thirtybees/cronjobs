@@ -86,6 +86,8 @@ class CronJobscronModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
+        Configuration::updateGlobalValue(CronJobs::LAST_EXECUTION, time());
+
         $this->module->sendCallback();
 
         ob_start();

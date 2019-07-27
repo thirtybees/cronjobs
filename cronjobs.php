@@ -43,6 +43,7 @@ class CronJobs extends Module
     const MODULE_VERSION = 'CRONJOBS_MODULE_VERSION';
     const EXECUTION_TOKEN = 'CRONJOBS_EXECUTION_TOKEN';
     const PHP_FASTCGI_FINISH_REQUEST = 'CRONJOBS_FASTCGI_FINISH_REQUEST';
+    const LAST_EXECUTION = 'CRONJOBS_LAST_EXECUTION';
 
     protected $successes;
     protected $warnings;
@@ -410,6 +411,25 @@ class CronJobs extends Module
             $submitCron = $this->postProcessUpdateJob();
         }
 
+        $lastExecuted = (int)Configuration::getGlobalValue(static::LAST_EXECUTION);
+        $now = time();
+        $diff = $now - $lastExecuted;
+        $isRunning = $diff < (24 * 60 * 60);
+        $lastExecutedText = null;
+        $lastExecutedDate = null;
+        if ($isRunning) {
+            $lastExecutedDate = Tools::displayDate(date('Y-m-d H:i:s', $lastExecuted), null, true);
+            if ($diff < 60) {
+                $lastExecutedText = $this->l('few seconds ago');
+            } else if ($diff < 3600) {
+                $mins = round($diff / 60);
+                $lastExecutedText = sprintf($this->l('%s minutes ago'), $mins);
+            } else {
+                $hours = round($diff / 3600);
+                $lastExecutedText = sprintf($this->l('%s hours ago'), $hours);
+            }
+        }
+
         $this->context->smarty->assign(
             [
                 'module_dir'       => $this->_path,
@@ -420,6 +440,9 @@ class CronJobs extends Module
                 'curl_info'        => $this->l('To execute your cron tasks, please insert the following line in your cron tasks manager:', 'CronJobsForms'),
                 'cronjob_freq_php' => '* * * * * curl '.(\Configuration::get('PS_SSL_ENABLED') ? '-k ' : null).'"'.$this->context->link->getModuleLink($this->name, 'cron', ['token' => Configuration::get(static::EXECUTION_TOKEN)], true, (int) Configuration::get('PS_DEFAULT_LANG')).'"',
                 'cronjob_freq_cli' => '* * * * * php '.__DIR__.'/controllers/front/cron.php --token='.Configuration::get(static::EXECUTION_TOKEN),
+                'is_running'       => $isRunning,
+                'last_executed_text'    => $lastExecutedText,
+                'last_executed_date'    => $lastExecutedDate,
             ]
         );
 
