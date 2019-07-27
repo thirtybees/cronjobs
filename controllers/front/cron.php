@@ -34,12 +34,18 @@ if (!defined('_TB_VERSION_')) {
                 continue;
             }
 
-            $arg = substr($arg, 2); // --
-            $e = explode('=', $arg);
-            if (count($e) == 2) {
-                $_GET[$e[0]] = $e[1];
-            } else {
-                $_GET[$e[0]] = true;
+            // process arguments that starts with --
+            if (strpos($arg, '--') === 0) {
+                $arg = substr($arg, 2);
+                $e = explode('=', $arg);
+                $argName = $e[0];
+                if ($argName) {
+                    if (count($e) == 2) {
+                        $_GET[$argName] = $e[1];
+                    } else {
+                        $_GET[$argName] = true;
+                    }
+                }
             }
         }
         $_GET['module'] = 'cronjobs';
