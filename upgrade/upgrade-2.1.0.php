@@ -29,7 +29,7 @@ if (!defined('_TB_VERSION_')) {
 
 function upgrade_module_2_1_0()
 {
-    Db::getInstance()->execute('ALTER TABLE `cronjobs` ADD `minute` INTEGER DEFAULT \'-1\' AFTER `task`');
+    Db::getInstance()->execute('ALTER TABLE `'._DB_PREFIX_.'cronjobs` ADD `minute` INTEGER DEFAULT \'-1\' AFTER `task`');
 
     return true;
 }
