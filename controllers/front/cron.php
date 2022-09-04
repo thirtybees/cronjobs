@@ -27,33 +27,7 @@ if (!defined('_TB_VERSION_')) {
     if (php_sapi_name() !== 'cli') {
         exit;
     } else {
-        $first = true;
-        foreach ($argv as $arg) {
-            if ($first) {
-                $first = false;
-                continue;
-            }
-
-            // process arguments that starts with --
-            if (strpos($arg, '--') === 0) {
-                $arg = substr($arg, 2);
-                $e = explode('=', $arg);
-                $argName = $e[0];
-                if ($argName) {
-                    if (count($e) == 2) {
-                        $_GET[$argName] = $e[1];
-                    } else {
-                        $_GET[$argName] = true;
-                    }
-                }
-            }
-        }
-        $_GET['module'] = 'cronjobs';
-        $_GET['fc'] = 'module';
-        $_GET['controller'] = 'cron';
-
         require_once __DIR__.'/../../../../config/config.inc.php';
-        require_once __DIR__.'/../../cronjobs.php';
     }
 }
 
@@ -66,28 +40,22 @@ class CronJobscronModuleFrontController extends ModuleFrontController
     public $module;
 
     /**
-     * AdminCronJobsController constructor.
-     *
-     * @throws Adapter_Exception
-     * @throws PrestaShopDatabaseException
+     * @return bool
      * @throws PrestaShopException
      */
-    public function __construct()
+    public function checkAccess()
     {
-        if (Tools::getValue('token') != Configuration::getGlobalValue(\CronJobs::EXECUTION_TOKEN)) {
+        if (Tools::getValue('token') != Configuration::getGlobalValue(CronJobs::EXECUTION_TOKEN)) {
             die('Invalid token');
         }
-
-        parent::__construct();
-
-        $this->postProcess();
-
-        die;
+        return true;
     }
+
 
     /**
      * @return void
      * @throws PrestaShopDatabaseException
+     * @throws HTMLPurifier_Exception
      * @throws PrestaShopException
      */
     public function postProcess()
@@ -102,6 +70,8 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         $this->runTasksCrons();
 
         ob_end_clean();
+
+        exit;
     }
 
     /**
@@ -114,7 +84,7 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
             (new DbQuery())
                 ->select('*')
-                ->from(\Cronjobs::TABLE)
+                ->from(CronJobs::TABLE)
                 ->where('`active` = 1')
                 ->where('`id_module` IS NOT NULL')
         );
@@ -124,12 +94,12 @@ class CronJobscronModuleFrontController extends ModuleFrontController
                 $module = Module::getInstanceById((int) $cron['id_module']);
 
                 if (!$module) {
-                    Db::getInstance()->delete(\Cronjobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
+                    Db::getInstance()->delete(CronJobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
                     break;
                 } elseif ($this->shouldBeExecuted($cron)) {
                     Hook::exec('actionCronJob', [], $cron['id_module']);
                     Db::getInstance()->update(
-                        \Cronjobs::TABLE,
+                        CronJobs::TABLE,
                         [
                             'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
                             'active'     => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
@@ -171,7 +141,7 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         $crons = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
             (new DbQuery())
                 ->select('*')
-                ->from(\Cronjobs::TABLE)
+                ->from(CronJobs::TABLE)
                 ->where('`active` = 1')
                 ->where('`id_module` IS NULL')
         );
@@ -181,11 +151,11 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         ]);
 
         if (is_array($crons) && (count($crons) > 0)) {
-            foreach ($crons as &$cron) {
+            foreach ($crons as $cron) {
                 if ($this->shouldBeExecuted($cron)) {
                     $guzzle->get(urldecode($cron['task']));
                     Db::getInstance()->update(
-                        \Cronjobs::TABLE,
+                        CronJobs::TABLE,
                         [
                             'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
                             'active'     => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
@@ -198,6 +168,33 @@ class CronJobscronModuleFrontController extends ModuleFrontController
     }
 }
 
+// dispatch controller if in CLI mode
 if (php_sapi_name() === 'cli') {
-    new CronJobscronModuleFrontController();
+    $first = true;
+    foreach ($argv as $arg) {
+        if ($first) {
+            $first = false;
+            continue;
+        }
+
+        // process arguments that starts with --
+        if (strpos($arg, '--') === 0) {
+            $arg = substr($arg, 2);
+            $e = explode('=', $arg);
+            $argName = $e[0];
+            if ($argName) {
+                if (count($e) == 2) {
+                    $_GET[$argName] = $e[1];
+                } else {
+                    $_GET[$argName] = true;
+                }
+            }
+        }
+    }
+    $_GET['module'] = 'cronjobs';
+    $_GET['fc'] = 'module';
+    $_GET['controller'] = 'cron';
+
+    /** @noinspection PhpUnhandledExceptionInspection */
+    Dispatcher::getInstance()->dispatch();
 }
