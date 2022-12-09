@@ -45,7 +45,13 @@ class CronJobs extends Module
     const PHP_FASTCGI_FINISH_REQUEST = 'CRONJOBS_FASTCGI_FINISH_REQUEST';
     const LAST_EXECUTION = 'CRONJOBS_LAST_EXECUTION';
 
+    /**
+     * @var
+     */
     protected $successes;
+    /**
+     * @var
+     */
     protected $warnings;
 
     /**
@@ -116,7 +122,6 @@ class CronJobs extends Module
      * @param int $idModule
      *
      * @return bool
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -394,7 +399,6 @@ class CronJobs extends Module
      *
      * @return string
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @throws SmartyException
@@ -597,11 +601,11 @@ class CronJobs extends Module
     }
 
     /**
-     * @param $minute
-     * @param $hour
-     * @param $day
-     * @param $month
-     * @param $dayOfWeek
+     * @param int $minute
+     * @param int $hour
+     * @param int $day
+     * @param int $month
+     * @param int $dayOfWeek
      *
      * @return bool
      */
@@ -662,9 +666,9 @@ class CronJobs extends Module
     }
 
     /**
-     * @param      $form
-     * @param      $formValues
-     * @param      $action
+     * @param array $form
+     * @param array $formValues
+     * @param string $action
      * @param bool $cancel
      * @param bool $backUrl
      * @param bool $update
@@ -781,7 +785,7 @@ class CronJobs extends Module
 
     /**
      * @return string
-     * @throws Adapter_Exception
+     *
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      * @throws SmartyException

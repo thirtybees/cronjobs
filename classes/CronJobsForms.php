@@ -25,7 +25,6 @@
 
 namespace CronJobsModule;
 
-use Adapter_Exception;
 use Configuration;
 use Context;
 use CronJobs;
@@ -53,7 +52,6 @@ class CronJobsForms
     /**
      * @return CronJobs
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -71,7 +69,7 @@ class CronJobsForms
      * @param bool   $update
      *
      * @return array
-     * @throws Adapter_Exception
+     *
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -208,7 +206,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -226,7 +223,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -244,7 +240,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -262,7 +257,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -280,7 +274,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -298,7 +291,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -337,7 +329,6 @@ class CronJobsForms
     /**
      * @return array
      *
-     * @throws Adapter_Exception
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -377,10 +368,10 @@ class CronJobsForms
     }
 
     /**
-     * @return array|false|\mysqli_result|null|\PDOStatement|resource
-     * @throws \Adapter_Exception
-     * @throws \PrestaShopDatabaseException
-     * @throws \PrestaShopException
+     * @return array|bool|\PDOStatement
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public static function getTasksListValues()
     {

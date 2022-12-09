@@ -27,6 +27,14 @@ if (!defined('_TB_VERSION_')) {
     exit;
 }
 
+/**
+ * @param CronJobs $module
+ *
+ * @return bool
+ *
+ * @throws PrestaShopDatabaseException
+ * @throws PrestaShopException
+ */
 function upgrade_module_1_0_6($module)
 {
     if (!Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS('SHOW COLUMNS FROM `'._DB_PREFIX_.$module->name.'` LIKE \'one_shot\'')) {

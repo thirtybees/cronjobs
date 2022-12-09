@@ -36,7 +36,9 @@ if (!defined('_TB_VERSION_')) {
  */
 class CronJobscronModuleFrontController extends ModuleFrontController
 {
-    /** @var CronJobs $module */
+    /**
+     * @var CronJobs $module
+     */
     public $module;
 
     /**
@@ -55,7 +57,6 @@ class CronJobscronModuleFrontController extends ModuleFrontController
     /**
      * @return void
      * @throws PrestaShopDatabaseException
-     * @throws HTMLPurifier_Exception
      * @throws PrestaShopException
      */
     public function postProcess()
