@@ -65,7 +65,6 @@ class CronJobs extends Module
         $this->need_instance = true;
 
         $this->bootstrap = true;
-        $this->display = 'view';
 
         parent::__construct();
 
