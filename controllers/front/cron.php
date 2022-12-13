@@ -94,7 +94,7 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         );
 
         if (is_array($crons) && (count($crons) > 0)) {
-            foreach ($crons as &$cron) {
+            foreach ($crons as $cron) {
                 $module = Module::getInstanceById((int) $cron['id_module']);
 
                 if (!$module) {
@@ -132,7 +132,7 @@ class CronJobscronModuleFrontController extends ModuleFrontController
         $execution = $dayOfWeek.' '.$day.' '.str_pad($hour, 2, '0', STR_PAD_LEFT).':'.str_pad($minute, 2, '0', STR_PAD_LEFT);
         $now = date('D Y-m-d H:i');
 
-        return !(bool) strcmp($now, $execution);
+        return !strcmp($now, $execution);
     }
 
     /**
