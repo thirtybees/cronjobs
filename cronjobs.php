@@ -63,7 +63,7 @@ class CronJobs extends Module
     {
         $this->name = 'cronjobs';
         $this->tab = 'administration';
-        $this->version = '2.2.2';
+        $this->version = '2.2.3';
 
         $this->controllers = ['cron'];
 
