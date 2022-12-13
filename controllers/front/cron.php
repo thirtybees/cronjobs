@@ -23,6 +23,9 @@
  *  PrestaShop is an internationally registered trademark & property of PrestaShop SA
  */
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+
 if (!defined('_TB_VERSION_')) {
     if (php_sapi_name() !== 'cli') {
         exit;
@@ -147,24 +150,28 @@ class CronJobscronModuleFrontController extends ModuleFrontController
                 ->where('`id_module` IS NULL')
         );
 
-        $guzzle = new \GuzzleHttp\Client([
-            'timeout' => 10000000,
-        ]);
+        try {
+            $guzzle = new Client([
+                'timeout' => 10000000,
+            ]);
 
-        if (is_array($crons) && (count($crons) > 0)) {
-            foreach ($crons as $cron) {
-                if ($this->shouldBeExecuted($cron)) {
-                    $guzzle->get(urldecode($cron['task']));
-                    Db::getInstance()->update(
-                        CronJobs::TABLE,
-                        [
-                            'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
-                            'active'     => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
-                        ],
-                        '`id_cronjob` = '.(int) $cron['id_cronjob']
-                    );
+            if (is_array($crons) && (count($crons) > 0)) {
+                foreach ($crons as $cron) {
+                    if ($this->shouldBeExecuted($cron)) {
+                        $guzzle->get(urldecode($cron['task']));
+                        Db::getInstance()->update(
+                            CronJobs::TABLE,
+                            [
+                                'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
+                                'active' => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
+                            ],
+                            '`id_cronjob` = ' . (int)$cron['id_cronjob']
+                        );
+                    }
                 }
             }
+        } catch (GuzzleException $e) {
+            throw new PrestaShopException("Transport exception", 0, $e);
         }
     }
 }
