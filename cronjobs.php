@@ -199,14 +199,13 @@ class CronJobs extends Module
                 ]
             );
         } else {
-            $isFrequencyValid = true;
             $minute = (int) $execution['minute'];
             $hour = (int) $execution['hour'];
             $day = (int) $execution['day'];
             $month = (int) $execution['month'];
             $dayOfWeek = (int) $execution['day_of_week'];
 
-            $isFrequencyValid = (($minute >= -1) && ($minute < 60) && $isFrequencyValid);
+            $isFrequencyValid = (($minute >= -1) && ($minute < 60));
             $isFrequencyValid = (($hour >= -1) && ($hour < 24) && $isFrequencyValid);
             $isFrequencyValid = (($day >= -1) && ($day <= 31) && $isFrequencyValid);
             $isFrequencyValid = (($month >= -1) && ($month <= 31) && $isFrequencyValid);
@@ -296,22 +295,21 @@ class CronJobs extends Module
      */
     public function uninstall()
     {
-        return $this->uninstallDb() &&
-            parent::uninstall();
+        return (
+            $this->uninstallDb() &&
+            parent::uninstall()
+        );
     }
 
     /**
      * @return bool
+     *
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function uninstallDb()
     {
-        try {
-            return Db::getInstance()->execute('DROP TABLE IF EXISTS '._DB_PREFIX_.static::TABLE);
-        } catch (PrestaShopException $e) {
-            $this->context->controller->errors[] = $e->getMessage();
-
-            return false;
-        }
+        return Db::getInstance()->execute('DROP TABLE IF EXISTS '._DB_PREFIX_.static::TABLE);
     }
 
     /**
@@ -432,7 +430,7 @@ class CronJobs extends Module
             $lastExecutedDate = Tools::displayDate(date('Y-m-d H:i:s', $lastExecuted), null, true);
             if ($diff < 60) {
                 $lastExecutedText = $this->l('few seconds ago');
-            } else if ($diff < 3600) {
+            } elseif ($diff < 3600) {
                 $mins = round($diff / 60);
                 $lastExecutedText = sprintf($this->l('%s minutes ago'), $mins);
             } else {
@@ -457,12 +455,7 @@ class CronJobs extends Module
             ]
         );
 
-        if ((Tools::isSubmit('submitNewCronJob') || Tools::isSubmit('newcronjobs') || Tools::isSubmit('updatecronjobs'))
-            && empty($submitCron)
-        ) {
-            $backUrl = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules');
-        }
-
+        $backUrl = $this->context->link->getAdminLink('AdminModules', false).'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name.'&token='.Tools::getAdminTokenLite('AdminModules');
         $output = $output.$this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
 
         if (Tools::isSubmit('newcronjobs') || ((isset($submitCron)) && ($submitCron === false))) {
@@ -705,11 +698,13 @@ class CronJobs extends Module
         }
 
         $helper->token = Tools::getAdminTokenLite('AdminModules');
+        /** @var AdminController $controller */
+        $controller = $this->context->controller;
 
         $helper->tpl_vars = [
             'fields_value'       => $formValues,
             'id_language'        => $this->context->language->id,
-            'languages'          => $this->context->controller->getLanguages(),
+            'languages'          => $controller->getLanguages(),
             'back_url'           => $backUrl,
             'show_cancel_button' => $cancel,
         ];
