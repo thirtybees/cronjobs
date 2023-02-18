@@ -24,7 +24,6 @@
  */
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
 
 if (!defined('_TB_VERSION_')) {
     if (php_sapi_name() !== 'cli') {
@@ -95,21 +94,22 @@ class CronJobscronModuleFrontController extends ModuleFrontController
 
         if (is_array($crons) && (count($crons) > 0)) {
             foreach ($crons as $cron) {
-                $module = Module::getInstanceById((int) $cron['id_module']);
+                $moduleId = (int)$cron['id_module'];
+                $cronjobId = (int)$cron['id_cronjob'];
+                $module = Module::getInstanceById($moduleId);
+                $description = $cron['description'];
 
                 if (!$module) {
-                    Db::getInstance()->delete(CronJobs::TABLE, '`id_cronjob` = '.(int) $cron['id_cronjob']);
+                    Db::getInstance()->delete(CronJobs::TABLE, '`id_cronjob` = ' . $cronjobId);
                     break;
                 } elseif ($this->shouldBeExecuted($cron)) {
-                    Hook::exec('actionCronJob', [], $cron['id_module']);
-                    Db::getInstance()->update(
-                        CronJobs::TABLE,
-                        [
-                            'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
-                            'active'     => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
-                        ],
-                        '`id_cronjob` = '.(int) $cron['id_cronjob']
-                    );
+                    try {
+                        Hook::exec('actionCronJob', [], $moduleId);
+                    } catch (Throwable $e) {
+                        $this->processError($cronjobId, $description, $e);
+                    } finally {
+                        $this->markAsExecuted($cronjobId);
+                    }
                 }
             }
         }
@@ -150,28 +150,69 @@ class CronJobscronModuleFrontController extends ModuleFrontController
                 ->where('`id_module` IS NULL')
         );
 
-        try {
-            $guzzle = new Client([
-                'timeout' => 10000000,
-            ]);
+        $guzzle = new Client(['timeout' => 10000000]);
 
-            if (is_array($crons) && (count($crons) > 0)) {
-                foreach ($crons as $cron) {
-                    if ($this->shouldBeExecuted($cron)) {
-                        $guzzle->get(urldecode($cron['task']));
-                        Db::getInstance()->update(
-                            CronJobs::TABLE,
-                            [
-                                'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
-                                'active' => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
-                            ],
-                            '`id_cronjob` = ' . (int)$cron['id_cronjob']
-                        );
+        if (is_array($crons) && (count($crons) > 0)) {
+            foreach ($crons as $cron) {
+                if ($this->shouldBeExecuted($cron)) {
+                    $cronjobId = (int)$cron['id_cronjob'];
+                    $description = $cron['description'];
+                    $url = urldecode($cron['task']);
+                    try {
+                        $guzzle->get($url);
+                    } catch (Throwable $e) {
+                        $this->processError($cronjobId, $description . " [$url]", $e);
+                    } finally {
+                        $this->markAsExecuted($cronjobId);
                     }
                 }
             }
-        } catch (GuzzleException $e) {
-            throw new PrestaShopException("Transport exception", 0, $e);
+        }
+    }
+
+    /**
+     * Marks cron job as executed
+     *
+     * @param int $cronjobId
+     *
+     * @return void
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     */
+    protected function markAsExecuted($cronjobId)
+    {
+        $cronjobId = (int)$cronjobId;
+        Db::getInstance()->update(
+            CronJobs::TABLE,
+            [
+                'updated_at' => ['type' => 'sql', 'value' => 'NOW()'],
+                'active' => ['type' => 'sql', 'value' => 'IF (`one_shot` = TRUE, FALSE, `active`)'],
+            ],
+            '`id_cronjob` = ' . $cronjobId
+        );
+    }
+
+    /**
+     * Logs errors into /log/cronjobs_<date>_exception.log
+     *
+     * @param int $cronjobId
+     * @param string $description
+     * @param Throwable $e
+     *
+     * @return void
+     */
+    protected function processError(int $cronjobId, string $description, Throwable $e)
+    {
+        // log to error log
+        $logger = new FileLogger();
+        $logger->setFilename(_PS_ROOT_DIR_ . '/log/cronjobs_' . date('Ymd') . '_exception.log');
+        $logger->logError($description . ": " . $e->getMessage() . ' in ' . $e->getFile() . ' at line ' . $e->getLine());
+
+        // pass through thirty bees error handler, if exists
+        if (class_exists('\Thirtybees\Core\Error\ErrorUtils')) {
+            $errorDescription = \Thirtybees\Core\Error\ErrorUtils::describeException($e);
+            $serviceLocator = \Thirtybees\Core\DependencyInjection\ServiceLocator::getInstance();
+            $serviceLocator->getErrorHandler()->logFatalError($errorDescription);
         }
     }
 }

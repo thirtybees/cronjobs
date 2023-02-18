@@ -76,6 +76,14 @@ class CronJobs extends Module
 
         $this->displayName = $this->l('Cron tasks manager');
         $this->description = $this->l('Manage all your automated web tasks from a single interface.');
+
+        // Module requires at least PHP 7
+        if (version_compare(PHP_VERSION, '7.0.0', '<')) {
+            $this->warning = 'This module version requires PHP 7. You are running ' . PHP_VERSION . '. Module has been disabled.';
+            if (Module::isEnabled($this->name)) {
+                $this->disable(true);
+            }
+        }
     }
 
     /**
